@@ -1,84 +1,160 @@
 ---
-import { Image } from 'astro:assets';
 import type { CollectionEntry } from 'astro:content';
-import BaseHead from '../components/BaseHead.astro';
-import Footer from '../components/Footer.astro';
-import FormattedDate from '../components/FormattedDate.astro';
-import Header from '../components/Header.astro';
-
-type Props = CollectionEntry<'blog'>['data'];
-
-const { title, description, pubDate, updatedDate, heroImage } = Astro.props;
+import type { MarkdownHeading } from 'astro';
+import SiteLayout from './SiteLayout.astro';
+type Props = CollectionEntry<'blog'>['data'] & {
+	headings?: MarkdownHeading[];
+	readingTime?: number;
+	nextPost?: CollectionEntry<'blog'>;
+};
+const {
+	title,
+	description,
+	pubDate,
+	updatedDate,
+	category,
+	author,
+	headings = [],
+	readingTime = 1,
+	nextPost,
+} = Astro.props;
+const sections = headings.filter((heading) => heading.depth === 2);
 ---
 
-<html lang="en">
-	<head>
-		<BaseHead title={title} description={description} />
-		<style>
-			main {
-				width: calc(100% - 2em);
-				max-width: 100%;
-				margin: 0;
-			}
-			.hero-image {
-				width: 100%;
-			}
-			.hero-image img {
-				display: block;
-				margin: 0 auto;
-				border-radius: 12px;
-				box-shadow: var(--box-shadow);
-			}
-			.prose {
-				width: 720px;
-				max-width: calc(100% - 2em);
-				margin: auto;
-				padding: 1em;
-				color: rgb(var(--gray-dark));
-			}
-			.title {
-				margin-bottom: 1em;
-				padding: 1em 0;
-				text-align: center;
-				line-height: 1;
-			}
-			.title h1 {
-				margin: 0 0 0.5em 0;
-			}
-			.date {
-				margin-bottom: 0.5em;
-				color: rgb(var(--gray));
-			}
-			.last-updated-on {
-				font-style: italic;
-			}
-		</style>
-	</head>
-
-	<body>
-		<Header />
-		<main>
-			<article>
-				<div class="hero-image">
-					{heroImage && <Image width={1020} height={510} src={heroImage} alt="" />}
-				</div>
-				<div class="prose">
-					<div class="title">
-						<div class="date">
-							<FormattedDate date={pubDate} />
+<SiteLayout
+	title={`${title} — OpenReview Journal`}
+	description={description}
+	article
+>
+	<div class="container">
+		<a href="/blog/" class="back-link">
+			← &nbsp; All stories
+		</a>
+		<article>
+			<header class="article-heading article-width">
+				<p class="eyebrow">{category} / The craft of review</p>
+				<h1>{title}</h1>
+				<p class="article-deck">{description}</p>
+				<div class="article-byline">
+					<span class="avatar" aria-hidden="true">
+						OR
+					</span>
+					<div>
+						<strong>{author}</strong>
+						<p class="mono">
+							<time datetime={pubDate.toISOString()}>
+								{pubDate.toLocaleDateString('en-US', {
+									month: 'long',
+									day: 'numeric',
+									year: 'numeric',
+									timeZone: 'UTC',
+								})}
+							</time>{' '}
+							&nbsp; · &nbsp; {readingTime} min read
 							{updatedDate && (
-								<div class="last-updated-on">
-									Last updated on <FormattedDate date={updatedDate} />
-								</div>
+								<>
+									{' '}
+									&nbsp; · &nbsp; Updated{' '}
+									<time datetime={updatedDate.toISOString()}>
+										{updatedDate.toLocaleDateString('en-US', {
+											month: 'short',
+											day: 'numeric',
+											timeZone: 'UTC',
+										})}
+									</time>
+								</>
 							)}
-						</div>
-						<h1>{title}</h1>
-						<hr />
+						</p>
 					</div>
-					<slot />
 				</div>
-			</article>
-		</main>
-		<Footer />
-	</body>
-</html>
+			</header>
+			<div
+				class="anatomy article-width"
+				aria-label="The anatomy of a better review: intent, context, conversation"
+			>
+				<p class="mono">THE ANATOMY OF A BETTER REVIEW</p>
+				<div class="anatomy-steps">
+					{['Intent', 'Context', 'Conversation'].map((step, index) => (
+						<div class="anatomy-step">
+							<span class="mono">0{index + 1}</span>
+							<strong>{step}</strong>
+						</div>
+					))}
+				</div>
+				<p class="mono anatomy-caption">LESS FRICTION AT EVERY STEP.</p>
+			</div>
+			<div class="article-grid">
+				<aside class="toc">
+					<nav aria-label="On this page">
+						<p class="mono">ON THIS PAGE</p>
+						<ol>
+							{sections.map((heading) => (
+								<li>
+									<a href={`#${heading.slug}`}>{heading.text}</a>
+								</li>
+							))}
+						</ol>
+					</nav>
+				</aside>
+				<div class="prose">
+					<slot />
+					<div class="article-end">
+						<span class="mono">GOOD IDEAS ARE BETTER SHARED.</span>
+						<button type="button" class="share-button">
+							Copy article link &nbsp; ↗
+						</button>
+						<span class="sr-only" role="status" data-share-status></span>
+					</div>
+				</div>
+			</div>
+			{nextPost && (
+				<a class="next-story article-width" href={`/blog/${nextPost.id}/`}>
+					<p class="eyebrow">Keep reading / {nextPost.data.category}</p>
+					<h2>{nextPost.data.title}</h2>
+					<span class="text-link">
+						Read next <span aria-hidden="true">↗</span>
+					</span>
+				</a>
+			)}
+		</article>
+	</div>
+</SiteLayout>
+<script>
+	document
+		.querySelector<HTMLButtonElement>('.share-button')
+		?.addEventListener('click', async (event) => {
+			const button = event.currentTarget as HTMLButtonElement;
+			const status = document.querySelector('[data-share-status]');
+			try {
+				await navigator.clipboard.writeText(location.href);
+				button.textContent = 'Link copied ✓';
+				if (status) status.textContent = 'Article link copied to clipboard.';
+				setTimeout(() => {
+					button.textContent = 'Copy article link ↗';
+				}, 2500);
+			} catch {
+				if (status)
+					status.textContent =
+						'Copy the article URL from your browser’s address bar.';
+				button.textContent = 'Copy URL from address bar';
+			}
+		});
+	const links = document.querySelectorAll<HTMLAnchorElement>('.toc a');
+	const observer = new IntersectionObserver(
+		(entries) => {
+			for (const entry of entries) {
+				if (entry.isIntersecting)
+					links.forEach((link) =>
+						link.setAttribute(
+							'aria-current',
+							String(link.hash === `#${entry.target.id}`),
+						),
+					);
+			}
+		},
+		{ rootMargin: '-5% 0px -65% 0px' },
+	);
+	document
+		.querySelectorAll('.prose h2')
+		.forEach((heading) => observer.observe(heading));
+</script>

@@ -1,63 +1,47 @@
-# Astro Starter Kit: Blog
+# OpenReview website
+
+The Astro implementation of the OpenReview Penpot designs: phosphor-green dark mode, cobalt-blue light mode, and the custom open-loop “or” identity.
+
+## Development
+
+Requires Node.js 22.22 or newer.
 
 ```sh
-npm create astro@latest -- --template blog
+npm install
+npm run dev -- --background
 ```
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+The development server is available at `http://localhost:4321`. Manage it with `npm run astro -- dev status`, `npm run astro -- dev logs`, and `npm run astro -- dev stop`.
 
-Features:
-
-- ✅ Minimal styling (make it your own!)
-- ✅ 100/100 Lighthouse performance
-- ✅ SEO-friendly with canonical URLs and Open Graph data
-- ✅ Sitemap support
-- ✅ RSS Feed support
-- ✅ Markdown & MDX support
-
-## 🚀 Project Structure
-
-Inside of your Astro project, you'll see the following folders and files:
-
-```text
-├── public/
-├── src/
-│   ├── assets/
-│   ├── components/
-│   ├── content/
-│   ├── layouts/
-│   └── pages/
-├── astro.config.mjs
-├── README.md
-├── package.json
-└── tsconfig.json
+```sh
+npm run build    # Generate the static site in dist/
+npm run preview  # Preview the production build
 ```
 
-Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a route based on its file name.
+## Pages
 
-There's nothing special about `src/components/`, but that's where we like to put any Astro/React/Vue/Svelte/Preact components.
+- `/` — landing page and interactive example review
+- `/blog/` — journal with category filters and RSS subscription
+- `/blog/[slug]/` — Markdown articles, generated table of contents, reading time, sharing, and related reading
+- `/about/` — OpenReview manifesto
+- `/brand/` — identity system and downloadable SVG mark
+- `/rss.xml` — journal RSS feed
 
-The `src/content/` directory contains "collections" of related Markdown and MDX documents. Use `getCollection()` to retrieve posts from `src/content/blog/`, and type-check your frontmatter using an optional schema. See [Astro's Content Collections docs](https://docs.astro.build/en/guides/content-collections/) to learn more.
+## Content and configuration
 
-Any static assets, like images, can be placed in the `public/` directory.
+Add articles to `src/content/blog/` as Markdown or MDX. The collection schema is in `src/content.config.ts`:
 
-## 🧞 Commands
+```yaml
+title: Your article title
+description: A short introduction to the article.
+pubDate: 2026-10-18
+category: Engineering # Engineering | Code review | Open source | Changelog
+cover: refactor # refactor | conversation | source | diff
+featured: false
+```
 
-All commands are run from the root of the project, from a terminal:
+`author` and `updatedDate` are optional. Level-two headings automatically populate the article table of contents. The included articles are sample editorial content based on the design mockups.
 
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `npm install`             | Installs dependencies                            |
-| `npm run dev`             | Starts local dev server at `localhost:4321`      |
-| `npm run build`           | Build your production site to `./dist/`          |
-| `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
+Product links are centralized in `src/consts.ts`. The canonical site URL defaults to `https://openreview.si`; set `SITE_URL` when building for another domain. The “Get started” action points to the repository’s getting-started section. The journal subscription uses RSS; no email subscription service is configured.
 
-## 👀 Want to learn more?
-
-Check out [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
-
-## Credit
-
-This theme is based off of the lovely [Bear Blog](https://github.com/HermanMartinus/bearblog/).
+Shared colors, spacing, typography, and responsive rules live in `src/styles/global.css`. The theme follows the system preference until a visitor makes a choice, which is then persisted in local storage. Fonts are self-hosted using Fontsource packages; no third-party font requests are needed.

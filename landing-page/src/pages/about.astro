@@ -1,11 +1,66 @@
 ---
-import Layout from '../layouts/BlogPost.astro';
+import SiteLayout from '../layouts/SiteLayout.astro';
+import Logo from '../components/Logo.astro';
+import { GITHUB_URL } from '../consts';
 ---
 
-<Layout
-	title="About Me"
-	description="Lorem ipsum dolor sit amet"
-	pubDate={new Date('August 08 2021')}
-	heroImage={AboutHeroImage}
+<SiteLayout
+	title="Our manifesto — OpenReview"
+	description="Good tools belong to the people who use them. Why we’re building a calmer, open-source way to review code."
 >
-</Layout>
+	<section class="manifesto article-width container">
+		<p class="eyebrow">The OpenReview manifesto</p>
+		<h1>
+			Open by nature.
+			<br />
+			Forward by design.
+		</h1>
+		<div class="prose">
+			<p>
+				Code review should move good work forward. It should be the moment an
+				idea gets clearer, a teammate learns something new, and a team becomes a
+				little more confident in what it ships.
+			</p>
+			<p>
+				Too often, it becomes the opposite: another queue, another wall of
+				notifications, another conversation without the context it needs.
+			</p>
+			<h2>Clarity is a feature.</h2>
+			<p>
+				We believe the best tools make room for the work. A diff should be easy
+				to read. Feedback should stay close to the code. The next step should be
+				obvious.
+			</p>
+			<h2>Conversations, not verdicts.</h2>
+			<p>
+				A review is a shared effort to make something better. We’re designing
+				OpenReview around useful context, focused discussions, and clear
+				resolutions—so feedback can turn into progress.
+			</p>
+			<h2>Your tools should belong to you.</h2>
+			<p>
+				OpenReview is open source because the people who use a tool should be
+				able to understand it, question it, and improve it. Read the source.
+				Open an issue. Help us decide what comes next.
+			</p>
+			<blockquote>
+				<p>
+					Good code is a team effort.
+					<br />
+					Good tools should be, too.
+				</p>
+			</blockquote>
+		</div>
+		<div class="identity-signature">
+			<Logo markOnly />
+			<span class="mono muted">
+				OPEN SOURCE.
+				<br />
+				DEVELOPER DRIVEN.
+			</span>
+		</div>
+		<a class="button" href={GITHUB_URL}>
+			Build with us on GitHub <span aria-hidden="true">↗</span>
+		</a>
+	</section>
+</SiteLayout>

@@ -1,0 +1,51 @@
+---
+interface Props {
+	variant?: 'refactor' | 'conversation' | 'source' | 'diff';
+}
+const { variant = 'refactor' } = Astro.props;
+---
+
+<div class:list={['story-cover', `cover-${variant}`]} aria-hidden="true">
+	{variant === 'refactor' && (
+		<>
+			<div class="code-card code-before">
+				<p class="mono">BEFORE</p>
+				<code>{'if (session !== null) {'}</code>
+				<code>{'  if (session.isValid) {'}</code>
+				<code>{'    return session.user;'}</code>
+				<code>{'  }'}</code>
+				<code>{'}'}</code>
+			</div>
+			<div class="code-card code-after">
+				<p class="mono">AFTER</p>
+				<code>if (!session?.isValid)</code>
+				<code> return null;</code>
+				<code>return session.user;</code>
+			</div>
+			<span class="cover-caption">Less code. More clarity.</span>
+		</>
+	)}
+	{variant === 'conversation' && (
+		<>
+			<div class="bubble">Could we simplify this?</div>
+			<div class="bubble reply">Good call. Updated. &nbsp; ✓</div>
+		</>
+	)}
+	{variant === 'source' && (
+		<>
+			<span class="brace">{'{'}</span>
+			<span class="mono">OPEN</span>
+			<span class="brace">{'}'}</span>
+		</>
+	)}
+	{variant === 'diff' && (
+		<>
+			<span class="mini-line"></span>
+			<span class="mini-line"></span>
+			<span class="mini-line"></span>
+			<span class="mini-line"></span>
+			<span class="mini-line"></span>
+			<span class="mono">−42 / +12</span>
+		</>
+	)}
+</div>

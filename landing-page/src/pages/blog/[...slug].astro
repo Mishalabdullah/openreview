@@ -12,9 +12,23 @@ export async function getStaticPaths() {
 type Props = CollectionEntry<'blog'>;
 
 const post = Astro.props;
-const { Content } = await render(post);
+const { Content, headings } = await render(post);
+const posts = (await getCollection('blog')).sort(
+	(a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf(),
+);
+const nextPost =
+	posts[(posts.findIndex((entry) => entry.id === post.id) + 1) % posts.length];
+const readingTime = Math.max(
+	1,
+	Math.ceil((post.body ?? '').split(/\s+/).length / 200),
+);
 ---
 
-<BlogPost {...post.data}>
+<BlogPost
+	{...post.data}
+	headings={headings}
+	readingTime={readingTime}
+	nextPost={nextPost?.id !== post.id ? nextPost : undefined}
+>
 	<Content />
 </BlogPost>

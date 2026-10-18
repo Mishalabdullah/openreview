@@ -1,8 +1,23 @@
 ---
-const today = new Date();
+import Logo from './Logo.astro';
+import { DOCS_URL, GITHUB_URL } from '../consts';
 ---
 
-<footer>
-	&copy; {today.getFullYear()} openreview.si All rights reserved.
+<footer class="site-footer container">
+	<div>
+		<a href="/" aria-label="OpenReview home">
+			<Logo />
+		</a>
+		<p class="mono">Built in the open. For the people who build.</p>
+	</div>
+	<nav aria-label="Footer navigation">
+		<a href={GITHUB_URL}>GitHub ↗</a>
+		<a href={DOCS_URL}>Docs</a>
+		<a href="/blog/">Journal</a>
+		<a href="/brand/">Identity</a>
+		<a href={`${GITHUB_URL}/discussions`}>Community</a>
+	</nav>
+	<span class="footer-copyright mono">
+		© {new Date().getFullYear()} OpenReview
+	</span>
 </footer>
-

@@ -1,0 +1,94 @@
+---
+const lines = [
+	{ n: 24, text: '  export async function authenticate(req) {', type: '' },
+	{ n: 25, text: '    const session = await getSession(req);', type: '' },
+	{
+		n: 26,
+		text: '−   if (session !== null && session.isValid) {',
+		type: 'removed',
+	},
+	{ n: 26, text: '+   if (!session?.isValid) return null;', type: 'added' },
+	{ n: 27, text: '+   return session.user;', type: 'added' },
+	{ n: 28, text: '  }', type: '' },
+];
+---
+
+<figure aria-label="OpenReview code review example">
+	<div class="workspace">
+		<div class="workspace-bar">
+			<span>
+				openreview <span class="muted">/</span> platform
+			</span>
+			<strong>✓ &nbsp; Ready for review</strong>
+		</div>
+		<div class="workspace-body">
+			<aside class="file-sidebar" aria-label="Example pull request files">
+				<span class="mono accent">#128</span>
+				<h3>Simplify auth flow</h3>
+				<p class="branch">feat/auth-cleanup</p>
+				<p class="eyebrow">Files changed &nbsp; 3</p>
+				<div class="files">
+					<span class="file active">▧ auth.ts</span>
+					<span class="file">▧ session.ts</span>
+					<span class="file">▧ auth.test.ts</span>
+				</div>
+			</aside>
+			<div class="diff-area">
+				<div class="diff-file mono">
+					<span>src / lib / auth.ts</span>
+					<span class="accent">+18 &nbsp; −32</span>
+				</div>
+				<div
+					class="diff-scroll"
+					tabindex="0"
+					role="region"
+					aria-label="Scrollable code diff"
+				>
+					<div class="diff-code">
+						<div class="hunk">@@ −24,8 +24,6 @@ &nbsp; authenticate()</div>
+						{lines.map((line) => (
+							<div class:list={['code-line', line.type]}>
+								<span class="line-no" aria-hidden="true">
+									{line.n}
+								</span>
+								<code class="line-content">{line.text}</code>
+							</div>
+						))}
+					</div>
+				</div>
+				<div class="review-comment">
+					<span class="avatar">JL</span>
+					<div>
+						<div class="comment-author">
+							Jamie Lee <time>just now</time>
+						</div>
+						<p>
+							Much easier to follow. Early returns make the happy path clear.
+						</p>
+						<button
+							type="button"
+							class="resolved"
+							aria-pressed="true"
+							data-resolve
+						>
+							✓ &nbsp; Resolved
+						</button>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	<figcaption class="preview-caption mono">
+		A little less noise. A lot more context.
+	</figcaption>
+</figure>
+<script>
+	document
+		.querySelector<HTMLButtonElement>('[data-resolve]')
+		?.addEventListener('click', (event) => {
+			const button = event.currentTarget as HTMLButtonElement;
+			const resolved = button.getAttribute('aria-pressed') !== 'true';
+			button.setAttribute('aria-pressed', String(resolved));
+			button.textContent = resolved ? '✓  Resolved' : '↳  Resolve thread';
+		});
+</script>

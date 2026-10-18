@@ -1,0 +1,22 @@
+---
+interface Props {
+	markOnly?: boolean;
+}
+const { markOnly = false } = Astro.props;
+---
+
+<span class:list={['logo', { 'mark-only': markOnly }]}>
+	<svg
+		class="logo-mark"
+		xmlns="http://www.w3.org/2000/svg"
+		width="40"
+		height="40"
+		viewBox="0 0 80 80"
+		fill="currentColor"
+		aria-hidden="true"
+	>
+		<path d="M8 29C8 17 17 9 29 9H51V21H29C23 21 20 24 20 30V50C20 56 23 59 29 59H38V31H54C66 31 73 38 73 49V53H61V49C61 45 58 43 54 43H50V71H29C17 71 8 63 8 51Z" />
+		<path d="M55 9H73V27H61V21H55ZM57 59H73V71H57Z" />
+	</svg>
+	{!markOnly && <span class="wordmark">openreview</span>}
+</span>

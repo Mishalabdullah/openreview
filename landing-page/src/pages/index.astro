@@ -1,19 +1,117 @@
 ---
-import BaseHead from '../components/BaseHead.astro';
-import Footer from '../components/Footer.astro';
-import Header from '../components/Header.astro';
-import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
+import SiteLayout from '../layouts/SiteLayout.astro';
+import ReviewPreview from '../components/ReviewPreview.astro';
+import { GET_STARTED_URL, GITHUB_URL } from '../consts';
+const features = [
+	{
+		icon: '−  +',
+		title: 'Clarity in every diff.',
+		description:
+			'Scan changes without the clutter. Keep the code and its context right where you need them.',
+	},
+	{
+		icon: '[ … ]',
+		title: 'Conversations that move.',
+		description:
+			'Turn feedback into progress with focused threads and clear resolutions. Less back-and-forth. More building.',
+	},
+	{
+		icon: '</>',
+		title: 'Open by design.',
+		description:
+			'Read the source. Shape the roadmap. Make your review workflow your own. Good tools belong to their community.',
+	},
+];
+const steps = [
+	{ title: 'Connect your repo', description: 'Bring your code into focus.' },
+	{ title: 'Review together', description: 'Keep feedback close to the code.' },
+	{
+		title: 'Merge with confidence',
+		description: 'Resolve, approve, and ship.',
+	},
+];
 ---
 
-<!doctype html>
-<html lang="en">
-	<head>
-		<BaseHead title={SITE_TITLE} description={SITE_DESCRIPTION} />
-	</head>
-	<body>
-		<Header />
-		<main>
-				</main>
-		<Footer />
-	</body>
-</html>
+<SiteLayout>
+	<div class="container">
+		<section class="hero" aria-labelledby="hero-title">
+			<a href={GITHUB_URL} class="release-pill mono">
+				<span class="status-dot" aria-hidden="true"></span>Open source / Built
+				for your next merge <span aria-hidden="true">↗</span>
+			</a>
+			<h1 id="hero-title">
+				Less back-and-forth.
+				<br />
+				More forward.
+			</h1>
+			<p class="hero-description">
+				A calmer place to understand changes, share context,
+				<br />
+				and ship work you’re proud of. Open source. Built for developers.
+			</p>
+			<div class="hero-actions">
+				<a href={GET_STARTED_URL} class="button">
+					Start reviewing <span aria-hidden="true">→</span>
+				</a>
+				<a href={GITHUB_URL} class="button button-secondary">
+					View source on GitHub <span aria-hidden="true">↗</span>
+				</a>
+			</div>
+			<p class="hero-note mono">
+				Diffs that make sense. Feedback that moves you.
+			</p>
+		</section>
+		<ReviewPreview />
+		<section class="features" id="product" aria-labelledby="features-title">
+			<p class="eyebrow">01 / The review, reconsidered</p>
+			<h2 id="features-title" class="section-title">
+				Everything you need. Nothing in your way.
+			</h2>
+			<div class="feature-grid">
+				{features.map((feature, index) => (
+					<article class="feature">
+						<div class="feature-top">
+							<span>0{index + 1}</span>
+							<span class="feature-icon" aria-hidden="true">
+								{feature.icon}
+							</span>
+						</div>
+						<h3>{feature.title}</h3>
+						<p>{feature.description}</p>
+					</article>
+				))}
+			</div>
+		</section>
+		<section class="workflow" aria-labelledby="workflow-title">
+			<h2 id="workflow-title" class="eyebrow">
+				02 / From first diff to final approval
+			</h2>
+			<div class="workflow-grid">
+				{steps.map((step, index) => (
+					<div>
+						<span class="mono muted">0{index + 1} &nbsp; →</span>
+						<h3>{step.title}</h3>
+						<p>{step.description}</p>
+					</div>
+				))}
+			</div>
+		</section>
+		<div class="open-ribbon mono">
+			<span class="accent">⌘ &nbsp; Developer owned</span>
+			<span>No black boxes</span>
+			<a href="/about/">A better review starts with you ↗</a>
+		</div>
+		<section class="closing">
+			<h2>Your next great merge starts here.</h2>
+			<p>Better conversations. Clearer decisions. Code that moves forward.</p>
+			<div class="closing-actions">
+				<a class="button" href={GET_STARTED_URL}>
+					Get started with OpenReview <span aria-hidden="true">→</span>
+				</a>
+				<span class="mono">
+					Open source. Developer driven. Always evolving.
+				</span>
+			</div>
+		</section>
+	</div>
+</SiteLayout>

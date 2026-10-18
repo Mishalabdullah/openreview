@@ -1,112 +1,165 @@
 ---
-import { Image } from 'astro:assets';
 import { getCollection } from 'astro:content';
-import BaseHead from '../../components/BaseHead.astro';
-import Footer from '../../components/Footer.astro';
-import FormattedDate from '../../components/FormattedDate.astro';
-import Header from '../../components/Header.astro';
-import { SITE_DESCRIPTION, SITE_TITLE } from '../../consts';
-
+import SiteLayout from '../../layouts/SiteLayout.astro';
+import StoryCover from '../../components/StoryCover.astro';
 const posts = (await getCollection('blog')).sort(
 	(a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf(),
 );
+const featured = posts.find((post) => post.data.featured) ?? posts[0];
+const categories = [
+	'All stories',
+	'Engineering',
+	'Code review',
+	'Open source',
+	'Changelog',
+];
+const readTime = (body?: string) =>
+	`${Math.max(1, Math.ceil((body ?? '').split(/\s+/).length / 200))} min read`;
 ---
 
-<!doctype html>
-<html lang="en">
-	<head>
-		<BaseHead title={SITE_TITLE} description={SITE_DESCRIPTION} />
-		<style>
-			main {
-				width: 960px;
-			}
-			ul {
-				display: flex;
-				flex-wrap: wrap;
-				gap: 2rem;
-				list-style-type: none;
-				margin: 0;
-				padding: 0;
-			}
-			ul li {
-				width: calc(50% - 1rem);
-			}
-			ul li * {
-				text-decoration: none;
-				transition: 0.2s ease;
-			}
-			ul li:first-child {
-				width: 100%;
-				margin-bottom: 1rem;
-				text-align: center;
-			}
-			ul li:first-child img {
-				width: 100%;
-			}
-			ul li:first-child .title {
-				font-size: 2.369rem;
-			}
-			ul li img {
-				margin-bottom: 0.5rem;
-				border-radius: 12px;
-			}
-			ul li a {
-				display: block;
-			}
-			.title {
-				margin: 0;
-				color: rgb(var(--black));
-				line-height: 1;
-			}
-			.date {
-				margin: 0;
-				color: rgb(var(--gray));
-			}
-			ul li a:hover h4,
-			ul li a:hover .date {
-				color: rgb(var(--accent));
-			}
-			ul a:hover img {
-				box-shadow: var(--box-shadow);
-			}
-			@media (max-width: 720px) {
-				ul {
-					gap: 0.5em;
-				}
-				ul li {
-					width: 100%;
-					text-align: center;
-				}
-				ul li:first-child {
-					margin-bottom: 0;
-				}
-				ul li:first-child .title {
-					font-size: 1.563em;
-				}
-			}
-		</style>
-	</head>
-	<body>
-		<Header />
-		<main>
-			<section>
-				<ul>
-					{posts.map((post) => (
-						<li>
+<SiteLayout
+	title="Journal — OpenReview"
+	description="Ideas, engineering notes, and a few strong opinions on building better software together."
+>
+	<div class="container">
+		<section class="journal-hero">
+			<p class="eyebrow">The OpenReview journal</p>
+			<h1>
+				Notes from
+				<br />
+				the other side of the diff.
+			</h1>
+			<div class="journal-intro">
+				<p>
+					Ideas, engineering notes, and a few strong opinions
+					<br />
+					on building better software together.
+				</p>
+				<span class="mono">FOR PEOPLE WHO READ THE CODE.</span>
+			</div>
+		</section>
+		<div class="filters" role="group" aria-label="Filter stories by category">
+			{categories.map((category, i) => (
+				<button
+					class="filter-button"
+					type="button"
+					data-filter={category}
+					aria-pressed={i === 0}
+				>
+					{category}
+				</button>
+			))}
+		</div>
+		<div class="featured-section" data-story-category={featured.data.category}>
+			<p class="eyebrow muted">01 / The latest thinking</p>
+			<article class="featured-story">
+				<a
+					href={`/blog/${featured.id}/`}
+					aria-label={`Read ${featured.data.title}`}
+				>
+					<StoryCover variant={featured.data.cover} />
+				</a>
+				<div>
+					<p class="eyebrow">
+						{featured.data.category} / {readTime(featured.body)}
+					</p>
+					<a href={`/blog/${featured.id}/`}>
+						<h2>{featured.data.title}</h2>
+					</a>
+					<p>{featured.data.description}</p>
+					<a class="text-link" href={`/blog/${featured.id}/`}>
+						Read the story <span aria-hidden="true">↗</span>
+					</a>
+				</div>
+			</article>
+		</div>
+		<section class="more-stories" aria-labelledby="more-title">
+			<h2 class="eyebrow muted" id="more-title">
+				02 / More from the journal
+			</h2>
+			<div class="story-grid">
+				{posts
+					.filter((post) => post.id !== featured.id)
+					.map((post) => (
+						<article
+							class="story-card"
+							data-story-category={post.data.category}
+						>
 							<a href={`/blog/${post.id}/`}>
-								{post.data.heroImage && (
-									<Image width={720} height={360} src={post.data.heroImage} alt="" />
-								)}
-								<h4 class="title">{post.data.title}</h4>
-								<p class="date">
-									<FormattedDate date={post.data.pubDate} />
+								<StoryCover variant={post.data.cover} />
+								<p class="eyebrow">
+									{post.data.category} / {readTime(post.body)}
 								</p>
+								<h2>{post.data.title}</h2>
+								<p>{post.data.description}</p>
+								<span class="text-link">
+									Read story <span aria-hidden="true">↗</span>
+								</span>
 							</a>
-						</li>
+						</article>
 					))}
-				</ul>
-			</section>
-		</main>
-		<Footer />
-	</body>
-</html>
+			</div>
+			<p class="empty-filter" hidden>
+				No stories in this category yet. Good things take a little time.
+			</p>
+			<p class="sr-only" role="status" data-filter-status></p>
+		</section>
+		<aside class="newsletter">
+			<div>
+				<p class="eyebrow">A signal worth subscribing to.</p>
+				<h2>Good reads. No noise.</h2>
+				<p>
+					Engineering notes and product updates. Only when we have something to
+					say.
+				</p>
+			</div>
+			<div class="newsletter-actions">
+				<a class="button" href="/rss.xml">
+					Subscribe via RSS <span aria-hidden="true">↗</span>
+				</a>
+				<span class="mono">YOUR READER. YOUR INBOX. NO ALGORITHM.</span>
+			</div>
+		</aside>
+	</div>
+</SiteLayout>
+<script>
+	const buttons = document.querySelectorAll<HTMLButtonElement>('[data-filter]');
+	const stories = document.querySelectorAll<HTMLElement>(
+		'[data-story-category]',
+	);
+	function filterStories(category: string) {
+		let count = 0;
+		stories.forEach((story) => {
+			story.hidden =
+				category !== 'All stories' && story.dataset.storyCategory !== category;
+			if (!story.hidden) count++;
+		});
+		buttons.forEach((button) =>
+			button.setAttribute(
+				'aria-pressed',
+				String(button.dataset.filter === category),
+			),
+		);
+		const empty = document.querySelector<HTMLElement>('.empty-filter');
+		if (empty) empty.hidden = count > 0;
+		const status = document.querySelector('[data-filter-status]');
+		if (status)
+			status.textContent = `${count} ${count === 1 ? 'story' : 'stories'} shown`;
+	}
+	const initial = new URL(location.href).searchParams.get('category');
+	if (
+		initial &&
+		[...buttons].some((button) => button.dataset.filter === initial)
+	)
+		filterStories(initial);
+	buttons.forEach((button) =>
+		button.addEventListener('click', () => {
+			const category = button.dataset.filter!;
+			filterStories(category);
+			const url = new URL(location.href);
+			if (category === 'All stories') url.searchParams.delete('category');
+			else url.searchParams.set('category', category);
+			history.replaceState(null, '', url);
+		}),
+	);
+</script>

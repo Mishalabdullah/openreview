@@ -14,6 +14,14 @@ const blog = defineCollection({
 			pubDate: z.coerce.date(),
 			updatedDate: z.coerce.date().optional(),
 			heroImage: z.optional(image()),
+			category: z
+				.enum(['Engineering', 'Code review', 'Open source', 'Changelog'])
+				.default('Engineering'),
+			cover: z
+				.enum(['refactor', 'conversation', 'source', 'diff'])
+				.default('refactor'),
+			featured: z.boolean().default(false),
+			author: z.string().default('The OpenReview team'),
 		}),
 });
 

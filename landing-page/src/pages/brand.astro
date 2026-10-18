@@ -1,0 +1,93 @@
+---
+import SiteLayout from '../layouts/SiteLayout.astro';
+import Logo from '../components/Logo.astro';
+---
+
+<SiteLayout
+	title="Identity — OpenReview"
+	description="An open loop. An unexpected r. A mark with an open ending. The OpenReview visual identity."
+>
+	<div class="container brand-page">
+		<p class="eyebrow">OpenReview / Visual identity</p>
+		<h1>
+			A mark with
+			<br />
+			an open ending.
+		</h1>
+		<p class="brand-deck">
+			A custom “or” ligature. Built from the shape of a review, not the usual
+			symbols for code.
+		</p>
+		<div class="brand-lockups">
+			<div class="brand-lockup brand-dark">
+				<Logo />
+				<span class="mono">01 / PHOSPHOR ON INK</span>
+			</div>
+			<div class="brand-lockup brand-light">
+				<Logo />
+				<span class="mono">02 / COBALT ON PAPER</span>
+			</div>
+		</div>
+		<section class="brand-explanation">
+			<h2 class="eyebrow muted">One continuous idea.</h2>
+			<div class="brand-anatomy">
+				<div class="brand-mono">
+					<Logo markOnly />
+				</div>
+				<div>
+					<h3>An open “o”.</h3>
+					<p>
+						A loop with a deliberate break.
+						<br />
+						Open source, never a closed box.
+					</p>
+				</div>
+				<div>
+					<h3>An unexpected “r”.</h3>
+					<p>
+						The loop becomes a review stem.
+						<br />
+						One form. Two initials.
+					</p>
+				</div>
+				<div>
+					<h3>The detached tab.</h3>
+					<p>
+						A small annotation off the edge.
+						<br />
+						The conversation keeps moving.
+					</p>
+				</div>
+			</div>
+		</section>
+		<section class="brand-details">
+			<div>
+				<h2 class="eyebrow muted">Icon-size studies</h2>
+				<div class="size-studies">
+					{[24, 32, 48, 64].map((size) => (
+						<span style={`--mark-size:${size}px`}>
+							<Logo markOnly />
+						</span>
+					))}
+				</div>
+			</div>
+			<div class="brand-swatches">
+				<div>
+					<p class="mono">PHOSPHOR / #B5F779</p>
+					<span class="swatch swatch-green"></span>
+				</div>
+				<div>
+					<p class="mono">COBALT / #315AE8</p>
+					<span class="swatch swatch-blue"></span>
+				</div>
+			</div>
+		</section>
+		<a
+			class="button button-secondary"
+			href="/openreview-logo.svg"
+			download="openreview-logo.svg"
+		>
+			Download vector mark <span aria-hidden="true">↓</span>
+		</a>
+	</div>
+</SiteLayout>
