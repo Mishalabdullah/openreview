@@ -1,0 +1,862 @@
+---
+import Logo from './Logo.astro';
+const ruleFiles = [
+	{
+		id: 'general',
+		name: 'rule_1.md',
+		title: '# Code review standards',
+		lines: [
+			'Prefer clear, focused changes.',
+			'Flag missing error handling.',
+			'Ask for tests when behavior changes.',
+		],
+	},
+	{
+		id: 'ui',
+		name: 'UI_review.md',
+		title: '# UI review checklist',
+		lines: [
+			'Check keyboard navigation.',
+			'Keep layouts responsive.',
+			'Use accessible color contrast.',
+		],
+	},
+];
+---
+
+<section class="control-section" aria-labelledby="control-heading">
+	<header class="control-heading">
+		<div>
+			<p class="eyebrow">02 / Yours, all the way down</p>
+			<h2 id="control-heading">
+				Your stack.
+				<br />
+				<span>Your rules. Your call.</span>
+			</h2>
+		</div>
+		<p class="control-intro">
+			Choose what powers your reviews, define what good code looks like, and
+			decide where it all runs.
+		</p>
+	</header>
+	<div class="control-grid">
+		<article class="control-card keys-card">
+			<div class="card-kicker">
+				<span class="mono">01 / THE ENGINE</span>
+				<svg
+					width="18"
+					height="18"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.5"
+					aria-hidden="true"
+				>
+					<circle cx="8" cy="8" r="5" />
+					<path d="m11.5 11.5 9 9m-3-3 3-3m-6 0 3-3" />
+				</svg>
+			</div>
+			<h3>Bring your own keys.</h3>
+			<p class="card-description">
+				Use your Claude or Codex subscription, or connect your own API keys. You
+				choose the intelligence behind every review.
+			</p>
+			<div
+				class="credentials-preview"
+				aria-label="Supported providers: Claude, Codex, and your API keys"
+			>
+				<div class="provider-row">
+					<div class="provider-mark claude-mark" aria-hidden="true">
+						✳
+					</div>
+					<div>
+						<strong>Claude</strong>
+						<span>Your subscription</span>
+					</div>
+					<span class="provider-badge">YOUR ACCOUNT</span>
+				</div>
+				<div class="provider-row">
+					<div class="provider-mark codex-mark" aria-hidden="true">
+						&gt;_
+					</div>
+					<div>
+						<strong>Codex</strong>
+						<span>Your subscription</span>
+					</div>
+					<span class="provider-badge">YOUR ACCOUNT</span>
+				</div>
+				<div class="api-key-row">
+					<span class="mono">API KEY</span>
+					<span class="key-value" aria-hidden="true">
+						•••• •••• •••• ••••
+					</span>
+					<svg
+						width="14"
+						height="16"
+						viewBox="0 0 16 18"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="1.25"
+						aria-label="Your credentials"
+					>
+						<rect x="2" y="7" width="12" height="9" rx="2" />
+						<path d="M5 7V5a3 3 0 0 1 6 0v2" />
+						<path d="M8 10v3" />
+					</svg>
+				</div>
+			</div>
+			<p class="card-footnote">
+				<span class="small-dot" aria-hidden="true"></span>Your provider. Your
+				credentials. Your choice.
+			</p>
+		</article>
+		<article class="control-card rules-card">
+			<div class="card-kicker">
+				<span class="mono">02 / THE STANDARD</span>
+				<span class="mono code-symbol" aria-hidden="true">
+					{}
+				</span>
+			</div>
+			<h3>
+				Great reviews start
+				<br />
+				with your rules.
+			</h3>
+			<p class="card-description">
+				Turn your team’s standards into Markdown. Drop them in{' '}
+				<code>.openreview/</code> and give every review the right context.
+			</p>
+			<div class="rule-editor">
+				<div class="editor-bar">
+					<span class="folder-label">
+						<svg
+							width="14"
+							height="14"
+							viewBox="0 0 20 20"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="1.3"
+							aria-hidden="true"
+						>
+							<path d="M2 5h6l2 2h8v10H2ZM2 5V3h6l2 2h8v2" />
+						</svg>
+						.openreview/
+					</span>
+					<span class="mono editor-hint">VERSIONED WITH YOUR CODE</span>
+				</div>
+				<div class="rule-tabs" role="tablist" aria-label="Example review rules">
+					{ruleFiles.map((file, i) => (
+						<button
+							type="button"
+							id={`rule-tab-${file.id}`}
+							role="tab"
+							aria-selected={i === 0}
+							aria-controls={`rule-panel-${file.id}`}
+							tabindex={i === 0 ? 0 : -1}
+							data-rule-tab={file.id}
+						>
+							<span class="file-symbol" aria-hidden="true">
+								↓
+							</span>
+							{file.name}
+						</button>
+					))}
+				</div>
+				{ruleFiles.map((file, i) => (
+					<div
+						id={`rule-panel-${file.id}`}
+						class="rule-content"
+						role="tabpanel"
+						aria-labelledby={`rule-tab-${file.id}`}
+						hidden={i !== 0}
+						tabindex="0"
+					>
+						<div class="editor-line">
+							<span class="line-number" aria-hidden="true">
+								1
+							</span>
+							<code class="rule-title">{file.title}</code>
+						</div>
+						<div class="editor-line" aria-hidden="true">
+							<span class="line-number">2</span>
+							<span>&nbsp;</span>
+						</div>
+						{file.lines.map((line, index) => (
+							<div class="editor-line">
+								<span class="line-number" aria-hidden="true">
+									{index + 3}
+								</span>
+								<code>
+									<span class="list-dash">- </span>
+									{line}
+								</code>
+							</div>
+						))}
+					</div>
+				))}
+				<div class="editor-status">
+					<span>
+						<span class="small-dot" aria-hidden="true"></span>Plain Markdown.
+						Built for your workflow.
+					</span>
+					<span class="mono">.md</span>
+				</div>
+			</div>
+		</article>
+		<article class="control-card hosting-card">
+			<div class="hosting-copy">
+				<div class="card-kicker">
+					<span class="mono">03 / THE ENVIRONMENT</span>
+				</div>
+				<h3>
+					Your infrastructure.
+					<br />
+					Your peace of mind.
+				</h3>
+				<p class="card-description">
+					Self-host OpenReview where you want it. Keep control of your code,
+					your data, and the way your team reviews.
+				</p>
+				<span class="hosting-label">
+					<span class="small-dot" aria-hidden="true"></span>SELF-HOSTABLE BY
+					DESIGN
+				</span>
+			</div>
+			<div class="hosting-visual">
+				<div class="network-boundary">
+					<span class="boundary-label mono">YOUR INFRASTRUCTURE</span>
+					<div class="network-flow">
+						<div class="network-node">
+							<div class="node-icon">
+								<svg
+									width="24"
+									height="24"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="1.3"
+									aria-hidden="true"
+								>
+									<path d="m12 3 9 5v9l-9 5-9-5V8Z" />
+									<path d="m3 8 9 5 9-5m-9 5v9M7.5 5.5l9 5" />
+								</svg>
+							</div>
+							<span>Your repository</span>
+						</div>
+						<div class="network-connector" aria-hidden="true">
+							<span>→</span>
+						</div>
+						<div class="network-node review-node">
+							<div class="node-icon">
+								<Logo markOnly />
+							</div>
+							<span>OpenReview</span>
+						</div>
+						<div class="network-connector" aria-hidden="true">
+							<span>→</span>
+						</div>
+						<div class="network-node">
+							<div class="node-icon">
+								<svg
+									width="24"
+									height="24"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="1.3"
+									aria-hidden="true"
+								>
+									<circle cx="9" cy="8" r="3" />
+									<path d="M3 20v-2a6 6 0 0 1 12 0v2M16 5a3 3 0 0 1 0 6m2 3a5 5 0 0 1 3 4v2" />
+								</svg>
+							</div>
+							<span>Your team</span>
+						</div>
+					</div>
+				</div>
+				<p class="network-caption mono">
+					YOUR NETWORK. YOUR WORKFLOW. YOUR CONTROL.
+				</p>
+			</div>
+		</article>
+	</div>
+</section>
+
+<script>
+	const tabs = [
+		...document.querySelectorAll<HTMLButtonElement>('[data-rule-tab]'),
+	];
+	function selectRule(tab: HTMLButtonElement) {
+		tabs.forEach((item) => {
+			const selected = item === tab;
+			item.setAttribute('aria-selected', String(selected));
+			item.tabIndex = selected ? 0 : -1;
+			const panel = document.getElementById(
+				item.getAttribute('aria-controls')!,
+			);
+			if (panel) panel.hidden = !selected;
+		});
+	}
+	tabs.forEach((tab, index) => {
+		tab.addEventListener('click', () => selectRule(tab));
+		tab.addEventListener('keydown', (event) => {
+			let next: number;
+			if (event.key === 'ArrowRight') next = (index + 1) % tabs.length;
+			else if (event.key === 'ArrowLeft')
+				next = (index - 1 + tabs.length) % tabs.length;
+			else if (event.key === 'Home') next = 0;
+			else if (event.key === 'End') next = tabs.length - 1;
+			else return;
+			event.preventDefault();
+			selectRule(tabs[next]);
+			tabs[next].focus();
+		});
+	});
+</script>
+
+<style>
+	.control-section {
+		margin-top: 100px;
+	}
+	.control-heading {
+		display: flex;
+		justify-content: space-between;
+		align-items: end;
+		gap: 48px;
+		margin-bottom: 37px;
+	}
+	.control-heading h2 {
+		margin-top: 24px;
+		font-size: clamp(35px, 3.6vw, 50px);
+		line-height: 1.14;
+		font-weight: 650;
+		letter-spacing: -0.045em;
+	}
+	.control-heading h2 span {
+		color: var(--muted);
+	}
+	.control-intro {
+		max-width: 340px;
+		color: var(--muted);
+		font-size: 15px;
+		padding-bottom: 4px;
+	}
+	.control-grid {
+		display: grid;
+		grid-template-columns: 5fr 7fr;
+		gap: 20px;
+	}
+	.control-card {
+		padding: 32px;
+		background: var(--panel);
+		border: 1px solid var(--line);
+		border-radius: 12px;
+		min-width: 0;
+		position: relative;
+		overflow: hidden;
+	}
+	.card-kicker {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		color: var(--muted);
+		margin-bottom: 32px;
+	}
+	.card-kicker .mono {
+		font-size: 9px;
+		letter-spacing: 0.08em;
+	}
+	.card-kicker svg,
+	.card-kicker .code-symbol {
+		color: var(--accent);
+	}
+	.card-kicker .code-symbol {
+		font-size: 17px;
+	}
+	.control-card h3 {
+		font-size: clamp(27px, 2.4vw, 33px);
+		font-weight: 650;
+		line-height: 1.17;
+		letter-spacing: -0.045em;
+	}
+	.card-description {
+		margin-top: 18px;
+		color: var(--muted);
+		font-size: 14px;
+		line-height: 1.8;
+		max-width: 480px;
+	}
+	.card-description code {
+		color: var(--text);
+		font-size: 12px;
+	}
+	.credentials-preview {
+		margin-top: 31px;
+		padding: 6px 20px 0;
+		background: var(--bg);
+		border: 1px solid var(--line);
+		border-radius: 8px;
+	}
+	.keys-card {
+		display: flex;
+		flex-direction: column;
+	}
+	.keys-card .card-description {
+		margin-bottom: 31px;
+	}
+	.keys-card .credentials-preview {
+		margin-top: auto;
+	}
+	.provider-row {
+		display: flex;
+		align-items: center;
+		gap: 13px;
+		padding: 18px 0;
+	}
+	.provider-row + .provider-row {
+		border-top: 1px solid var(--line);
+	}
+	.provider-mark {
+		width: 38px;
+		height: 38px;
+		border: 1px solid var(--line);
+		border-radius: 8px;
+		display: grid;
+		place-items: center;
+		flex-shrink: 0;
+		background: var(--panel);
+	}
+	.claude-mark {
+		font-size: 30px;
+		line-height: 1;
+		color: #c58e70;
+	}
+	.codex-mark {
+		font-family: var(--mono);
+		font-size: 17px;
+		color: var(--text);
+	}
+	.provider-row strong {
+		display: block;
+		font-size: 13px;
+		font-weight: 650;
+	}
+	.provider-row div > span {
+		display: block;
+		font-size: 10px;
+		color: var(--muted);
+		margin-top: 2px;
+	}
+	.provider-badge {
+		margin-left: auto;
+		padding: 4px 7px;
+		border-radius: 4px;
+		color: var(--muted);
+		background: var(--soft);
+		font-family: var(--mono);
+		font-size: 7px;
+		white-space: nowrap;
+		letter-spacing: 0.035em;
+	}
+	.api-key-row {
+		display: flex;
+		align-items: center;
+		gap: 13px;
+		border-top: 1px solid var(--line);
+		padding: 18px 0;
+	}
+	.api-key-row .mono {
+		font-size: 8px;
+		color: var(--muted);
+		white-space: nowrap;
+	}
+	.key-value {
+		font-family: var(--mono);
+		letter-spacing: 0.09em;
+		font-size: 10px;
+		color: var(--muted);
+	}
+	.api-key-row svg {
+		color: var(--muted);
+		margin-left: auto;
+		flex-shrink: 0;
+	}
+	.card-footnote {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		color: var(--muted);
+		font-size: 10px;
+		margin-top: 20px;
+	}
+	.small-dot {
+		display: inline-block;
+		width: 5px;
+		height: 5px;
+		background: var(--accent);
+		border-radius: 50%;
+		flex-shrink: 0;
+	}
+	.rules-card {
+		background: linear-gradient(
+			140deg,
+			var(--panel) 40%,
+			color-mix(in srgb, var(--accent) 4%, var(--panel))
+		);
+	}
+	.rule-editor {
+		border: 1px solid var(--line);
+		border-radius: 8px;
+		margin-top: 27px;
+		background: var(--bg);
+		overflow: hidden;
+	}
+	.editor-bar {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 12px;
+		padding: 14px 17px;
+		border-bottom: 1px solid var(--line);
+	}
+	.folder-label {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		font-family: var(--mono);
+		font-size: 11px;
+		color: var(--text);
+	}
+	.folder-label svg {
+		color: var(--muted);
+	}
+	.editor-hint {
+		font-size: 7px;
+		color: var(--muted);
+	}
+	.rule-tabs {
+		display: flex;
+		border-bottom: 1px solid var(--line);
+		background: var(--soft);
+	}
+	.rule-tabs button {
+		display: inline-flex;
+		align-items: center;
+		gap: 9px;
+		position: relative;
+		padding: 12px 17px;
+		background: transparent;
+		color: var(--muted);
+		font-family: var(--mono);
+		font-size: 10px;
+		border-right: 1px solid var(--line);
+	}
+	.rule-tabs button[aria-selected='true'] {
+		color: var(--text);
+		background: var(--bg);
+	}
+	.rule-tabs button[aria-selected='true']::before {
+		content: '';
+		height: 2px;
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		background: var(--accent);
+	}
+	.rule-tabs button:hover {
+		color: var(--text);
+	}
+	.file-symbol {
+		color: var(--accent);
+		font-size: 12px;
+	}
+	.rule-content {
+		padding: 20px 16px 23px;
+		min-height: 164px;
+	}
+	.editor-line {
+		display: flex;
+		gap: 17px;
+		font-family: var(--mono);
+		font-size: 11px;
+		line-height: 2.1;
+	}
+	.line-number {
+		min-width: 10px;
+		text-align: right;
+		color: var(--muted);
+		opacity: 0.7;
+		flex-shrink: 0;
+		font-size: 9px;
+	}
+	.editor-line code {
+		color: var(--muted);
+		overflow-wrap: anywhere;
+	}
+	.editor-line .rule-title {
+		color: var(--accent);
+	}
+	.list-dash {
+		color: var(--accent);
+	}
+	.editor-status {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 10px;
+		padding: 10px 17px;
+		border-top: 1px solid var(--line);
+		color: var(--muted);
+		font-size: 8px;
+	}
+	.editor-status > span:first-child {
+		display: inline-flex;
+		align-items: center;
+		gap: 7px;
+	}
+	.editor-status .mono {
+		font-size: 9px;
+	}
+	.hosting-card {
+		grid-column: 1 / -1;
+		display: grid;
+		grid-template-columns: 5fr 7fr;
+		gap: 48px;
+		align-items: center;
+		padding: 35px 32px;
+		background: linear-gradient(
+			110deg,
+			var(--panel),
+			color-mix(in srgb, var(--accent) 3%, var(--panel))
+		);
+	}
+	.hosting-card .card-kicker {
+		margin-bottom: 24px;
+	}
+	.hosting-card h3 {
+		font-size: 31px;
+	}
+	.hosting-label {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		margin-top: 25px;
+		font-family: var(--mono);
+		font-size: 8px;
+		letter-spacing: 0.045em;
+		color: var(--muted);
+	}
+	.hosting-visual {
+		padding: 18px 5px 0;
+	}
+	.network-boundary {
+		position: relative;
+		border: 1px dashed color-mix(in srgb, var(--accent) 30%, var(--line));
+		border-radius: 10px;
+		padding: 40px 25px 29px;
+		background: var(--bg);
+	}
+	.boundary-label {
+		position: absolute;
+		top: -7px;
+		left: 20px;
+		background: var(--bg);
+		padding: 0 10px;
+		font-size: 8px;
+		letter-spacing: 0.07em;
+		color: var(--accent);
+	}
+	.network-flow {
+		display: flex;
+		align-items: flex-start;
+	}
+	.network-node {
+		text-align: center;
+		min-width: 86px;
+		flex: 1;
+	}
+	.node-icon {
+		width: 57px;
+		height: 57px;
+		border: 1px solid var(--line);
+		background: var(--panel);
+		border-radius: 12px;
+		display: grid;
+		place-items: center;
+		margin: 0 auto 13px;
+		color: var(--muted);
+	}
+	.review-node .node-icon {
+		background: var(--tint);
+		border-color: color-mix(in srgb, var(--accent) 25%, var(--line));
+		box-shadow: 0 0 28px color-mix(in srgb, var(--accent) 5%, transparent);
+	}
+	.review-node .node-icon :global(.logo-mark) {
+		width: 31px;
+		height: 31px;
+	}
+	.network-node > span {
+		font-family: var(--mono);
+		font-size: 9px;
+		color: var(--muted);
+		white-space: nowrap;
+		line-height: 1.5;
+	}
+	.review-node > span {
+		color: var(--text);
+	}
+	.network-connector {
+		display: flex;
+		align-items: center;
+		min-width: 20px;
+		flex: 0.7;
+		height: 57px;
+		color: var(--accent);
+	}
+	.network-connector::before {
+		content: '';
+		flex: 1;
+		height: 1px;
+		background: var(--line);
+	}
+	.network-connector span {
+		line-height: 1;
+		font-size: 14px;
+		margin-left: -1px;
+	}
+	.network-caption {
+		text-align: center;
+		color: var(--muted);
+		font-size: 8px;
+		letter-spacing: 0.04em;
+		margin-top: 21px;
+	}
+	@media (max-width: 1100px) {
+		.control-card {
+			padding: 25px;
+		}
+		.control-grid {
+			grid-template-columns: 1fr 1.2fr;
+		}
+		.provider-badge {
+			font-size: 6px;
+			padding: 4px;
+		}
+		.credentials-preview {
+			padding-inline: 14px;
+		}
+		.editor-hint {
+			display: none;
+		}
+		.hosting-card {
+			gap: 30px;
+			grid-template-columns: 1fr 1.2fr;
+		}
+		.network-boundary {
+			padding-inline: 15px;
+		}
+		.network-node {
+			min-width: 68px;
+		}
+		.network-node > span {
+			font-size: 8px;
+		}
+		.editor-line {
+			font-size: 10px;
+			gap: 12px;
+		}
+	}
+	@media (max-width: 760px) {
+		.control-section {
+			margin-top: 65px;
+		}
+		.control-heading {
+			display: block;
+			margin-bottom: 28px;
+		}
+		.control-heading h2 {
+			font-size: 36px;
+			margin-top: 22px;
+		}
+		.control-intro {
+			margin-top: 24px;
+			max-width: 450px;
+			font-size: 14px;
+		}
+		.control-grid {
+			grid-template-columns: 1fr;
+			gap: 16px;
+		}
+		.control-card {
+			padding: 24px;
+		}
+		.control-card h3 {
+			font-size: 29px;
+		}
+		.card-kicker {
+			margin-bottom: 26px;
+		}
+		.card-description {
+			font-size: 13px;
+			margin-top: 16px;
+		}
+		.provider-badge {
+			font-size: 7px;
+			padding: 4px 6px;
+		}
+		.credentials-preview {
+			margin-top: 25px;
+		}
+		.rule-editor {
+			margin-top: 25px;
+		}
+		.rule-tabs button {
+			padding: 12px 14px;
+			font-size: 9px;
+		}
+		.rule-content {
+			padding: 18px 12px;
+		}
+		.editor-line {
+			font-size: 10px;
+			gap: 12px;
+		}
+		.editor-line code {
+			min-width: 0;
+		}
+		.editor-status {
+			font-size: 7px;
+			padding-inline: 12px;
+		}
+		.hosting-card {
+			display: block;
+		}
+		.hosting-visual {
+			margin-top: 33px;
+			padding: 7px 0 0;
+		}
+		.network-boundary {
+			padding: 32px 10px 23px;
+		}
+		.network-node {
+			min-width: 61px;
+		}
+		.node-icon {
+			width: 47px;
+			height: 47px;
+			border-radius: 10px;
+		}
+		.network-connector {
+			height: 47px;
+			min-width: 9px;
+		}
+		.network-node > span {
+			font-size: 7px;
+		}
+		.network-caption {
+			font-size: 7px;
+			line-height: 1.8;
+		}
+	}
+</style>

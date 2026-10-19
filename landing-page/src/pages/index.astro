@@ -1,8 +1,13 @@
 ---
 import SiteLayout from '../layouts/SiteLayout.astro';
 import ReviewPreview from '../components/ReviewPreview.astro';
+import DeveloperControl from '../components/DeveloperControl.astro';
 import { GET_STARTED_URL, GITHUB_URL } from '../consts';
-const features = [
+const features: {
+	icon: string;
+	title: string;
+	description: string;
+}[] = [
 	{
 		icon: '−  +',
 		title: 'Clarity in every diff.',
@@ -82,9 +87,10 @@ const steps = [
 				))}
 			</div>
 		</section>
+		<DeveloperControl />
 		<section class="workflow" aria-labelledby="workflow-title">
 			<h2 id="workflow-title" class="eyebrow">
-				02 / From first diff to final approval
+				03 / From first diff to final approval
 			</h2>
 			<div class="workflow-grid">
 				{steps.map((step, index) => (
