@@ -2039,8 +2039,22 @@ code {
 	}
 }
 
-/* Blend the blue mountain shadows into the dark page surface. */
-:root[data-theme='dark'] .home-page::before {
-	-webkit-mask-image: linear-gradient(to bottom, #000 78%, transparent 100%);
-	mask-image: linear-gradient(to bottom, #000 78%, transparent 100%);
+/* Feather the scene into the page surface in either theme. */
+.home-page::before {
+	-webkit-mask-image: linear-gradient(
+		to bottom,
+		#000 76%,
+		rgb(0 0 0 / 90%) 82%,
+		rgb(0 0 0 / 55%) 89%,
+		rgb(0 0 0 / 15%) 96%,
+		transparent 100%
+	);
+	mask-image: linear-gradient(
+		to bottom,
+		#000 76%,
+		rgb(0 0 0 / 90%) 82%,
+		rgb(0 0 0 / 55%) 89%,
+		rgb(0 0 0 / 15%) 96%,
+		transparent 100%
+	);
 }
