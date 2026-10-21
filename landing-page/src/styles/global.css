@@ -1,14 +1,14 @@
 :root {
 	color-scheme: dark;
-	--bg: #0c100e;
-	--panel: #131b16;
-	--soft: #1c2820;
-	--line: #2b3a30;
-	--text: #eff5ee;
-	--muted: #9aaa9d;
+	--bg: #0b1020;
+	--panel: #111a2d;
+	--soft: #19243a;
+	--line: #2a3852;
+	--text: #f0f3fa;
+	--muted: #a1adc4;
 	--accent: #b5f779;
 	--on-accent: #10200d;
-	--tint: #243a26;
+	--tint: #25372d;
 	--removed: #382721;
 	--red: #e7a08b;
 	--sans: 'Manrope Variable', sans-serif;
@@ -1748,14 +1748,14 @@ code {
 	font-size: 40px;
 }
 .brand-dark {
-	background: #0c100e;
-	color: #eff5ee;
+	background: #0b1020;
+	color: #f0f3fa;
 }
 .brand-dark .logo-mark {
 	color: #b5f779;
 }
 .brand-dark > .mono {
-	color: #9aaa9d;
+	color: #a1adc4;
 }
 .brand-light {
 	background: #ffffff;
@@ -1946,4 +1946,101 @@ code {
 		animation: none !important;
 		transition: none !important;
 	}
+}
+
+/* The landing scene spans the navigation and hero together. */
+.home-page {
+	--hero-height: clamp(760px, 66.7vw, 960px);
+	--hero-background: url('/bg_desktop_dark.webp');
+	position: relative;
+	isolation: isolate;
+}
+[data-theme='light'] .home-page {
+	--hero-background: url('/bg_desktop_light.webp');
+}
+.home-page::before {
+	content: '';
+	position: absolute;
+	inset: 0 0 auto;
+	height: var(--hero-height);
+	z-index: -1;
+	background: var(--hero-background) center bottom / cover no-repeat;
+	pointer-events: none;
+}
+.home-page .site-header {
+	border-bottom-color: transparent;
+}
+.home-page .hero {
+	min-height: calc(var(--hero-height) - 89px);
+	padding: clamp(90px, 8vw, 130px) 0 180px;
+	text-align: left;
+}
+.home-page .hero h1 {
+	font-size: clamp(48px, 5.2vw, 76px);
+	margin: 24px 0 20px;
+}
+.home-page .hero-description {
+	margin: 0;
+	max-width: 650px;
+}
+.home-page .hero-actions {
+	justify-content: flex-start;
+	margin-top: 28px;
+}
+.home-page .hero .button-secondary,
+.home-page .release-pill {
+	background: color-mix(in srgb, var(--soft) 65%, transparent);
+	backdrop-filter: blur(8px);
+}
+.home-page .hero-note {
+	margin-inline: 0;
+	margin-top: 22px;
+}
+.home-page .workspace {
+	margin-top: 32px;
+}
+@media (max-width: 760px) {
+	.home-page {
+		--hero-height: max(820px, 100svh);
+		--hero-background: url('/bg_mobile_dark.webp');
+	}
+	[data-theme='light'] .home-page {
+		--hero-background: url('/bg_mobile_light.webp');
+	}
+	.home-page .hero {
+		min-height: calc(var(--hero-height) - 78px);
+		padding: 65px 0 280px;
+	}
+	.home-page .hero h1 {
+		font-size: clamp(37px, 7.5vw, 56px);
+	}
+	.home-page .hero-description {
+		font-size: 16px;
+		max-width: 480px;
+	}
+	.home-page .hero-description br {
+		display: none;
+	}
+	.home-page .release-pill {
+		font-size: 8px;
+		gap: 7px;
+		padding: 8px 12px;
+	}
+	.home-page .hero-actions {
+		flex-wrap: wrap;
+	}
+}
+@media (max-width: 420px) {
+	.home-page .hero-actions {
+		align-items: flex-start;
+	}
+	.home-page .hero-actions .button {
+		width: auto;
+	}
+}
+
+/* Blend the blue mountain shadows into the dark page surface. */
+:root[data-theme='dark'] .home-page::before {
+	-webkit-mask-image: linear-gradient(to bottom, #000 78%, transparent 100%);
+	mask-image: linear-gradient(to bottom, #000 78%, transparent 100%);
 }

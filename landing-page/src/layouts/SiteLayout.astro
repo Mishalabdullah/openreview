@@ -20,7 +20,7 @@ const {
 	<head>
 		<BaseHead title={title} description={description} article={article} />
 	</head>
-	<body>
+	<body class:list={[{ 'home-page': Astro.url.pathname === '/' }]}>
 		<a class="skip-link" href="#main">
 			Skip to content
 		</a>

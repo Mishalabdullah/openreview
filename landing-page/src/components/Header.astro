@@ -91,7 +91,7 @@ const journal = Astro.url.pathname.startsWith('/blog');
 		if (label) label.textContent = dark ? 'Dark' : 'Light';
 		document
 			.querySelector('meta[name="theme-color"]')
-			?.setAttribute('content', dark ? '#0C100E' : '#F8F9FC');
+			?.setAttribute('content', dark ? '#0B1020' : '#F8F9FC');
 	};
 	syncTheme();
 	toggle?.addEventListener('click', () => {

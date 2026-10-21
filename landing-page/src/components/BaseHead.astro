@@ -16,7 +16,7 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="generator" content={Astro.generator} />
-<meta name="theme-color" content="#0C100E" />
+<meta name="theme-color" content="#0B1020" />
 <title>{title}</title>
 <meta name="description" content={description} />
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -45,6 +45,6 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
 		document.documentElement.dataset.theme = theme;
 		document
 			.querySelector('meta[name="theme-color"]')
-			?.setAttribute('content', theme === 'dark' ? '#0C100E' : '#F8F9FC');
+			?.setAttribute('content', theme === 'dark' ? '#0B1020' : '#F8F9FC');
 	})();
 </script>
