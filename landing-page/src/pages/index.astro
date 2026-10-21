@@ -87,6 +87,13 @@ const steps = [
 				))}
 			</div>
 		</section>
+		<aside class="open-source-statement" aria-label="Why OpenReview is open source">
+			<p class="eyebrow">The next tool should be open, too.</p>
+			<p class="statement-copy">
+				Open-source editors changed how we write code.
+				<strong>Why not an open-source agent to review it?</strong>
+			</p>
+		</aside>
 		<DeveloperControl />
 		<section class="workflow" aria-labelledby="workflow-title">
 			<h2 id="workflow-title" class="eyebrow">
@@ -121,3 +128,40 @@ const steps = [
 		</section>
 	</div>
 </SiteLayout>
+
+<style>
+	.open-source-statement {
+		margin-top: 85px;
+		padding: 42px 24px;
+		border-block: 1px solid var(--line);
+		text-align: center;
+	}
+	.open-source-statement .eyebrow {
+		font-size: 9px;
+		letter-spacing: 0.08em;
+	}
+	.statement-copy {
+		margin: 22px auto 0;
+		max-width: 1050px;
+		font-size: clamp(23px, 2.6vw, 35px);
+		line-height: 1.45;
+		letter-spacing: -0.035em;
+		color: var(--muted);
+		text-wrap: balance;
+	}
+	.statement-copy strong {
+		display: block;
+		margin-top: 5px;
+		color: var(--text);
+		font-weight: 650;
+	}
+	@media (max-width: 760px) {
+		.open-source-statement {
+			margin-top: 55px;
+			padding: 32px 0;
+		}
+		.statement-copy strong {
+			margin-top: 14px;
+		}
+	}
+</style>
