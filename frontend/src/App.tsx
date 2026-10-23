@@ -1,4 +1,5 @@
 import { createSignal, onMount } from "solid-js";
+import Dashboard from "./Dashboard";
 
 function App() {
   const [theme, setTheme] = createSignal<"dark" | "light">("dark");
@@ -26,6 +27,10 @@ function App() {
   const handleGitHubLogin = () => {
     window.location.href = `${import.meta.env.VITE_API_URL}/api/v1/auth/github`;
   };
+
+  if (window.location.pathname.replace(/\/$/, "") === "/dashboard") {
+    return <Dashboard theme={theme()} onToggleTheme={toggleTheme} />;
+  }
 
   return (
     <div class="sign-in-page">
