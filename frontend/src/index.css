@@ -12,12 +12,12 @@
   --tint: #25372d;
   --removed: #382721;
   --red: #e7a08b;
-  --sans: 'Manrope Variable', sans-serif;
-  --mono: 'IBM Plex Mono', monospace;
-  --serif: 'Newsreader Variable', Georgia, serif;
+  --sans: "Manrope Variable", sans-serif;
+  --mono: "IBM Plex Mono", monospace;
+  --serif: "Newsreader Variable", Georgia, serif;
 }
 
-:root[data-theme='light'] {
+:root[data-theme="light"] {
   color-scheme: light;
   --bg: #f8f9fc;
   --panel: #ffffff;
@@ -55,6 +55,237 @@ body {
 
 #root {
   min-height: 100svh;
+}
+
+.sign-in-page {
+  min-height: 100svh;
+}
+
+.login-header {
+  height: 104px;
+  padding-inline: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.login-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.login-brand svg {
+  color: var(--accent);
+}
+
+.login-layout {
+  display: grid;
+  grid-template-columns: 7fr 8fr;
+  min-height: calc(100svh - 104px);
+}
+
+.login-editorial {
+  background: var(--tint);
+  padding: 88px 64px 64px;
+}
+
+.login-eyebrow,
+.editorial-trust {
+  font: 400 12px/1.5 var(--mono);
+  text-transform: uppercase;
+}
+
+.login-eyebrow {
+  color: var(--accent);
+}
+
+.login-editorial h1 {
+  margin-top: 38px;
+  font-size: clamp(40px, 3.889vw, 64px);
+  font-weight: 600;
+  line-height: 1.5;
+  letter-spacing: 0;
+}
+
+.editorial-description {
+  margin-top: 32px;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1.5;
+}
+
+.editorial-trust {
+  margin-top: 106px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+}
+
+.login-auth {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 136px 48px 46px clamp(48px, 8.889vw, 160px);
+}
+
+.login-auth-content,
+.login-footer {
+  width: 100%;
+  max-width: 448px;
+}
+
+.login-auth h2 {
+  margin-top: 22px;
+  font-size: 32px;
+  font-weight: 600;
+  line-height: 1.5;
+  letter-spacing: 0;
+}
+
+.login-description {
+  margin-top: 16px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.login-auth .github-login {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 47px;
+  padding: 10px 16px;
+  gap: 12px;
+  border-radius: 22px;
+  font-weight: 600;
+}
+
+.github-login svg {
+  flex-shrink: 0;
+}
+
+.login-permissions {
+  margin-top: 20px;
+  color: var(--muted);
+  font-size: 11px;
+  font-style: italic;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.login-terms {
+  margin: 0;
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: left;
+}
+
+.login-footer {
+  margin-top: auto;
+  padding-top: 72px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.login-source {
+  margin-top: 12px;
+  text-align: left;
+}
+
+.login-footer a:hover {
+  color: var(--accent);
+}
+
+@media (max-width: 1100px) {
+  .login-editorial {
+    padding-inline: 40px;
+  }
+
+  .login-auth {
+    padding-inline: 40px;
+  }
+
+  .login-auth h2 {
+    font-size: 28px;
+  }
+}
+
+@media (max-width: 760px) {
+  .login-header {
+    height: 88px;
+    padding-inline: 24px;
+  }
+
+  .login-layout {
+    grid-template-columns: 1fr;
+    min-height: calc(100svh - 88px);
+  }
+
+  .login-editorial {
+    padding: 36px 24px;
+  }
+
+  .login-editorial h1 {
+    margin-top: 20px;
+    font-size: clamp(36px, 8vw, 48px);
+    line-height: 1.2;
+  }
+
+  .editorial-description {
+    margin-top: 24px;
+    font-size: 16px;
+  }
+
+  .editorial-trust {
+    margin-top: 32px;
+    font-size: 10px;
+  }
+
+  .login-auth {
+    align-items: center;
+    padding: 40px 24px 28px;
+  }
+
+  .login-auth h2 {
+    margin-top: 16px;
+    font-size: 28px;
+    line-height: 1.3;
+  }
+
+  .login-auth .github-login {
+    margin-top: 32px;
+  }
+
+  .login-footer {
+    padding-top: 48px;
+  }
+}
+
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 44px;
+  padding: 10px 14px;
+  background: var(--panel);
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-family: var(--mono);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.theme-toggle:hover {
+  color: var(--accent);
+  border-color: var(--accent);
 }
 
 a {
@@ -172,7 +403,10 @@ code {
   font-size: 14px;
   font-weight: 750;
   line-height: 1.5;
-  transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s,
+    background 0.2s;
 }
 
 .button:hover {
