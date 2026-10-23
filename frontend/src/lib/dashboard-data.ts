@@ -17,18 +17,32 @@ import type {
   RepositoryFilters,
 } from "./github-types";
 
-export type DashboardView = "overview" | "repositories" | "pull-requests";
+export type DashboardView =
+  | "overview"
+  | "repositories"
+  | "pull-requests"
+  | "review-rules"
+  | "models"
+  | "settings";
+
+export function dashboardView(pathname: string): DashboardView {
+  const view = pathname.split("/")[2];
+  return view === "repositories" ||
+    view === "pull-requests" ||
+    view === "review-rules" ||
+    view === "models" ||
+    view === "settings"
+    ? view
+    : "overview";
+}
 
 export function createDashboardData(options: {
   userId: () => string;
   signingOut: () => boolean;
   onSessionRequired: () => void;
 }) {
-  const initialView = window.location.pathname.split("/")[2];
   const [view, setView] = createSignal<DashboardView>(
-    initialView === "repositories" || initialView === "pull-requests"
-      ? initialView
-      : "overview",
+    dashboardView(window.location.pathname),
   );
   const [repositoryId, setRepositoryId] = createSignal("");
   const [search, setSearch] = createSignal("");
@@ -214,10 +228,7 @@ export function createDashboardData(options: {
     );
   }
   const handlePopState = () => {
-    const next = window.location.pathname.split("/")[2];
-    setView(
-      next === "repositories" || next === "pull-requests" ? next : "overview",
-    );
+    setView(dashboardView(window.location.pathname));
   };
   window.addEventListener("popstate", handlePopState);
   onCleanup(() => {

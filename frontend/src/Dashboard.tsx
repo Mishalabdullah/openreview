@@ -9,6 +9,9 @@ import {
   RepositoryBrowser,
 } from "./components/GitHubDashboard";
 import { formatCount, formatTimestamp } from "./lib/format";
+import ModelsPage from "./components/ModelsPage";
+import SettingsPage from "./components/SettingsPage";
+import ReviewRulesPage from "./components/ReviewRulesPage";
 
 type DashboardProps = {
   user: AuthUser;
@@ -23,15 +26,13 @@ type DashboardProps = {
 };
 
 const navigation = [
-  { label: "Overview", icon: "⊞" },
-  { label: "Repositories", icon: "▤" },
-  { label: "Pull Requests", icon: "⑂" },
-  { label: "Reviews", icon: "▣" },
-  { label: "Review Rules", icon: "☷" },
-  { label: "Models & Agents", icon: "⬡" },
-  { label: "Integrations", icon: "⌁" },
-  { label: "Settings", icon: "⚙" },
-];
+  { label: "Overview", icon: "⊞", view: "overview" },
+  { label: "Repositories", icon: "▤", view: "repositories" },
+  { label: "Pull Requests", icon: "⑂", view: "pull-requests" },
+  { label: "Review Rules", icon: "☷", view: "review-rules" },
+  { label: "Models & Agents", icon: "⬡", view: "models" },
+  { label: "Settings", icon: "⚙", view: "settings" },
+] as const;
 
 export default function Dashboard(props: DashboardProps) {
   const [collapsed, setCollapsed] = createSignal(false);
@@ -40,13 +41,12 @@ export default function Dashboard(props: DashboardProps) {
     signingOut: () => props.signingOut,
     onSessionRequired: props.onSessionRequired,
   });
-  const views = ["overview", "repositories", "pull-requests"] as const;
   const title = () =>
-    model.view() === "repositories"
-      ? "Repositories"
-      : model.view() === "pull-requests"
-        ? "Pull Requests"
-        : "Overview";
+    navigation.find((item) => item.view === model.view())?.label ?? "Overview";
+  const isCodeView = () =>
+    model.view() !== "models" &&
+    model.view() !== "settings" &&
+    model.view() !== "review-rules";
   const errorActions = {
     onReconnect: props.onReconnect,
     onConnection: () => void model.refresh(),
@@ -65,22 +65,6 @@ export default function Dashboard(props: DashboardProps) {
       .join("")
       .toUpperCase() || "U";
 
-  const SignOutButton = () => (
-    <>
-      <button
-        type="button"
-        class="dashboard-sign-out"
-        onClick={() => void props.onSignOut()}
-        disabled={props.signingOut}
-      >
-        {props.signingOut ? "Signing out…" : "Sign out"}
-      </button>
-      <p class="auth-error" role="alert" hidden={!props.authError}>
-        {props.authError}
-      </p>
-    </>
-  );
-
   const ThemeControl = () => (
     <button
       type="button"
@@ -90,6 +74,40 @@ export default function Dashboard(props: DashboardProps) {
     >
       <span aria-hidden="true">◐</span> {props.theme}
     </button>
+  );
+
+  const AccountControl = () => (
+    <div class="sidebar-account">
+      <span class="dashboard-avatar" aria-hidden="true">
+        {initials()}
+      </span>
+      <div class="sidebar-label">
+        <strong>{props.user.name}</strong>
+        <span title={props.user.email}>{props.user.email}</span>
+      </div>
+      <button
+        type="button"
+        class="sidebar-logout"
+        aria-label={props.signingOut ? "Signing out…" : "Sign out"}
+        title="Sign out"
+        disabled={props.signingOut}
+        onClick={() => void props.onSignOut()}
+      >
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.7"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M9 4H4v16h5m5-13 5 5-5 5M8 12h11" />
+        </svg>
+      </button>
+    </div>
   );
 
   const SidebarContent = () => (
@@ -112,37 +130,20 @@ export default function Dashboard(props: DashboardProps) {
         <span class="sidebar-label">openreview</span>
       </a>
 
-      <div class="workspace-switcher">
-        <strong class="sidebar-label">
-          {model.connection.metadata()?.account?.login ?? props.user.name}
-        </strong>
-        <p class="workspace-description sidebar-label">
-          {model.connected()
-            ? "GitHub repositories"
-            : "GitHub connection required"}
-        </p>
-        <span class="workspace-initial" aria-hidden="true">
-          O
-        </span>
-      </div>
-
       <nav class="dashboard-nav" aria-label="Main navigation">
         <For each={navigation}>
-          {(item, index) => (
+          {(item) => (
             <button
               type="button"
               classList={{
                 "nav-item": true,
-                "is-active": model.view() === views[index()],
+                "is-active": model.view() === item.view,
               }}
-              aria-current={
-                model.view() === views[index()] ? "page" : undefined
-              }
+              aria-current={model.view() === item.view ? "page" : undefined}
               aria-label={item.label}
-              disabled={index() > 2}
-              title={index() <= 2 ? item.label : `${item.label} — coming soon`}
+              title={item.label}
               onClick={() => {
-                if (index() <= 2) model.navigate(views[index()]);
+                model.navigate(item.view);
                 mobileMenu.close();
               }}
             >
@@ -166,21 +167,7 @@ export default function Dashboard(props: DashboardProps) {
           <span aria-hidden="true">{collapsed() ? "›" : "‹"}</span>
           <span class="sidebar-label">Collapse sidebar</span>
         </button>
-        <button
-          type="button"
-          class="sidebar-account"
-          popovertarget="dashboard-account"
-          aria-label="Open account and appearance options"
-          title={props.user.name}
-        >
-          <span class="dashboard-avatar" aria-hidden="true">
-            {initials()}
-          </span>
-          <div class="sidebar-label">
-            <strong>{props.user.name}</strong>
-            <span>{props.user.email}</span>
-          </div>
-        </button>
+        <AccountControl />
       </div>
     </>
   );
@@ -213,7 +200,6 @@ export default function Dashboard(props: DashboardProps) {
           </button>
           <SidebarContent />
           <ThemeControl />
-          <SignOutButton />
         </div>
       </dialog>
 
@@ -243,24 +229,6 @@ export default function Dashboard(props: DashboardProps) {
           <div class="desktop-theme-control">
             <ThemeControl />
           </div>
-          <button
-            class="mobile-account-trigger"
-            type="button"
-            popovertarget="dashboard-account"
-            aria-label="Open account and appearance options"
-          >
-            {initials()}
-          </button>
-          <div
-            id="dashboard-account"
-            popover="auto"
-            class="dashboard-account-popover"
-          >
-            <strong>{props.user.name}</strong>
-            <p>{props.user.email}</p>
-            <ThemeControl />
-            <SignOutButton />
-          </div>
         </header>
 
         <main id="dashboard-main" class="dashboard-main" tabIndex={-1}>
@@ -273,177 +241,207 @@ export default function Dashboard(props: DashboardProps) {
               <h1 id="dashboard-heading">{title()}</h1>
             </div>
             <p class="dashboard-description">
-              A clear path from open PR to confident merge.
+              {model.view() === "review-rules"
+                ? "Your codebase. Your standards. Written in Markdown."
+                : model.view() === "models"
+                  ? "Give every kind of change the right kind of attention."
+                  : model.view() === "settings"
+                    ? "Your account, your preferences, your workspace."
+                    : "A clear path from open PR to confident merge."}
             </p>
           </section>
-          <Show when={returnedFromInstallation}>
-            <p class="section-message" role="status">
-              GitHub installation returned successfully. Access is checked again
-              below.
-            </p>
+          <Show when={model.view() === "review-rules"}>
+            <ReviewRulesPage />
           </Show>
-          <ConnectionPanel
-            model={model}
-            onReconnect={props.onReconnect}
-            reconnecting={props.reconnecting}
-          />
-          <Show when={model.connected()}>
-            <div class="repository-scope">
-              <label>
-                Repository scope
-                <select
-                  aria-label="Repository scope"
-                  value={model.repositoryId()}
-                  onChange={(event) =>
-                    model.chooseRepository(event.currentTarget.value)
-                  }
-                >
-                  <option value="">All accessible repositories</option>
-                  <Show
-                    when={
-                      !model.repositories
-                        .items()
-                        .some((repo) => repo.id === model.repositoryId())
-                        ? model.selectedRepository()
-                        : undefined
+          <Show when={model.view() === "models"}>
+            <ModelsPage userId={props.user.id} />
+          </Show>
+          <Show when={model.view() === "settings"}>
+            <SettingsPage
+              user={props.user}
+              theme={props.theme}
+              onToggleTheme={props.onToggleTheme}
+              onSignOut={props.onSignOut}
+              signingOut={props.signingOut}
+              model={model}
+              onReconnect={props.onReconnect}
+              reconnecting={props.reconnecting}
+            />
+          </Show>
+          <Show when={isCodeView()}>
+            <Show when={returnedFromInstallation}>
+              <p class="section-message" role="status">
+                GitHub installation returned successfully. Access is checked
+                again below.
+              </p>
+            </Show>
+            <ConnectionPanel
+              model={model}
+              onReconnect={props.onReconnect}
+              reconnecting={props.reconnecting}
+            />
+            <Show when={model.connected()}>
+              <div class="repository-scope">
+                <label>
+                  Repository scope
+                  <select
+                    aria-label="Repository scope"
+                    value={model.repositoryId()}
+                    onChange={(event) =>
+                      model.chooseRepository(event.currentTarget.value)
                     }
                   >
-                    {(repo) => (
-                      <option value={repo().id}>{repo().fullName}</option>
-                    )}
-                  </Show>
-                  <For each={model.repositories.items()}>
-                    {(repo) => <option value={repo.id}>{repo.fullName}</option>}
-                  </For>
-                </select>
-              </label>
-              <button
-                type="button"
-                class="dashboard-control"
-                onClick={() => model.navigate("repositories")}
+                    <option value="">All accessible repositories</option>
+                    <Show
+                      when={
+                        !model.repositories
+                          .items()
+                          .some((repo) => repo.id === model.repositoryId())
+                          ? model.selectedRepository()
+                          : undefined
+                      }
+                    >
+                      {(repo) => (
+                        <option value={repo().id}>{repo().fullName}</option>
+                      )}
+                    </Show>
+                    <For each={model.repositories.items()}>
+                      {(repo) => (
+                        <option value={repo.id}>{repo.fullName}</option>
+                      )}
+                    </For>
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  class="dashboard-control"
+                  onClick={() => model.navigate("repositories")}
+                >
+                  Browse repositories
+                </button>
+                <Show when={model.repositories.loading()}>
+                  <span class="section-message" role="status">
+                    Loading repositories…
+                  </span>
+                </Show>
+              </div>
+              <Show
+                when={
+                  model.view() !== "repositories"
+                    ? model.repositories.error()
+                    : null
+                }
               >
-                Browse repositories
-              </button>
-              <Show when={model.repositories.loading()}>
-                <span class="section-message" role="status">
-                  Loading repositories…
-                </span>
-              </Show>
-            </div>
-            <Show
-              when={
-                model.view() !== "repositories"
-                  ? model.repositories.error()
-                  : null
-              }
-            >
-              {(error) => (
-                <ApiNotice
-                  error={error()}
-                  onRetry={() => void model.repositories.retry()}
-                  {...errorActions}
-                />
-              )}
-            </Show>
-            <Show when={model.view() === "overview"}>
-              <section
-                class="dashboard-metrics"
-                aria-label="GitHub statistics"
-                aria-busy={model.overview.loading()}
-              >
-                <article class="metric-card">
-                  <p class="metric-value">
-                    {formatCount(model.overview.value()?.repositoryCount)}
-                  </p>
-                  <h2>Repositories</h2>
-                  <p class="metric-context">
-                    {model.overview.loading()
-                      ? "Loading…"
-                      : model.overview.value()?.repositoryCount == null
-                        ? "Count unavailable"
-                        : "Accessible scope"}
-                  </p>
-                </article>
-                <article class="metric-card">
-                  <p class="metric-value">
-                    {formatCount(model.overview.value()?.openPullRequestCount)}
-                  </p>
-                  <h2>Open pull requests</h2>
-                  <p class="metric-context">
-                    {model.overview.loading()
-                      ? "Loading…"
-                      : model.overview.value()?.openPullRequestCount == null
-                        ? "Count unavailable"
-                        : "Across selected scope"}
-                  </p>
-                </article>
-                <article class="metric-card">
-                  <p class="metric-value" aria-label="Not available">
-                    —
-                  </p>
-                  <h2>AI reviews</h2>
-                  <p class="metric-context">Not enabled yet</p>
-                </article>
-              </section>
-              <Show when={model.overview.error()}>
                 {(error) => (
                   <ApiNotice
                     error={error()}
-                    onRetry={() => void model.overview.retry()}
+                    onRetry={() => void model.repositories.retry()}
                     {...errorActions}
                   />
                 )}
               </Show>
-              <section
-                class="dashboard-recent"
-                id="recent-reviews"
-                aria-labelledby="recent-heading"
-              >
-                <div class="recent-heading-row">
-                  <h2 id="recent-heading">Recent pull requests</h2>
-                  <button
-                    type="button"
-                    class="dashboard-control"
-                    onClick={() => model.navigate("pull-requests")}
-                  >
-                    View all <span aria-hidden="true">→</span>
-                  </button>
-                </div>
-                <Show when={model.overview.loading()}>
-                  <p class="section-message" role="status">
-                    Loading recent pull requests…
-                  </p>
-                </Show>
-                <Show when={model.overview.value()}>
-                  {(overview) => (
-                    <>
-                      <PullCards items={overview().recentPullRequests} />
-                      <Show when={overview().recentPullRequests.length === 0}>
-                        <div class="dashboard-empty-state">
-                          <h3>No recent pull requests</h3>
-                          <p>
-                            There are no recent pull requests in this accessible
-                            scope.
-                          </p>
-                        </div>
-                      </Show>
-                      <p class="github-data-note">
-                        {overview().lastSyncedAt
-                          ? `Last synced ${formatTimestamp(overview().lastSyncedAt)}`
-                          : "Fetched live from GitHub"}{" "}
-                        · GitHub pull requests are not completed OpenReview AI
-                        reviews.
-                      </p>
-                    </>
+              <Show when={model.view() === "overview"}>
+                <section
+                  class="dashboard-metrics"
+                  aria-label="GitHub statistics"
+                  aria-busy={model.overview.loading()}
+                >
+                  <article class="metric-card">
+                    <p class="metric-value">
+                      {formatCount(model.overview.value()?.repositoryCount)}
+                    </p>
+                    <h2>Repositories</h2>
+                    <p class="metric-context">
+                      {model.overview.loading()
+                        ? "Loading…"
+                        : model.overview.value()?.repositoryCount == null
+                          ? "Count unavailable"
+                          : "Accessible scope"}
+                    </p>
+                  </article>
+                  <article class="metric-card">
+                    <p class="metric-value">
+                      {formatCount(
+                        model.overview.value()?.openPullRequestCount,
+                      )}
+                    </p>
+                    <h2>Open pull requests</h2>
+                    <p class="metric-context">
+                      {model.overview.loading()
+                        ? "Loading…"
+                        : model.overview.value()?.openPullRequestCount == null
+                          ? "Count unavailable"
+                          : "Across selected scope"}
+                    </p>
+                  </article>
+                  <article class="metric-card">
+                    <p class="metric-value" aria-label="Not available">
+                      —
+                    </p>
+                    <h2>AI reviews</h2>
+                    <p class="metric-context">Not enabled yet</p>
+                  </article>
+                </section>
+                <Show when={model.overview.error()}>
+                  {(error) => (
+                    <ApiNotice
+                      error={error()}
+                      onRetry={() => void model.overview.retry()}
+                      {...errorActions}
+                    />
                   )}
                 </Show>
-              </section>
-            </Show>
-            <Show when={model.view() === "repositories"}>
-              <RepositoryBrowser model={model} {...errorActions} />
-            </Show>
-            <Show when={model.view() === "pull-requests"}>
-              <PullRequestBrowser model={model} {...errorActions} />
+                <section
+                  class="dashboard-recent"
+                  id="recent-reviews"
+                  aria-labelledby="recent-heading"
+                >
+                  <div class="recent-heading-row">
+                    <h2 id="recent-heading">Recent pull requests</h2>
+                    <button
+                      type="button"
+                      class="dashboard-control"
+                      onClick={() => model.navigate("pull-requests")}
+                    >
+                      View all <span aria-hidden="true">→</span>
+                    </button>
+                  </div>
+                  <Show when={model.overview.loading()}>
+                    <p class="section-message" role="status">
+                      Loading recent pull requests…
+                    </p>
+                  </Show>
+                  <Show when={model.overview.value()}>
+                    {(overview) => (
+                      <>
+                        <PullCards items={overview().recentPullRequests} />
+                        <Show when={overview().recentPullRequests.length === 0}>
+                          <div class="dashboard-empty-state">
+                            <h3>No recent pull requests</h3>
+                            <p>
+                              There are no recent pull requests in this
+                              accessible scope.
+                            </p>
+                          </div>
+                        </Show>
+                        <p class="github-data-note">
+                          {overview().lastSyncedAt
+                            ? `Last synced ${formatTimestamp(overview().lastSyncedAt)}`
+                            : "Fetched live from GitHub"}{" "}
+                          · GitHub pull requests are not completed OpenReview AI
+                          reviews.
+                        </p>
+                      </>
+                    )}
+                  </Show>
+                </section>
+              </Show>
+              <Show when={model.view() === "repositories"}>
+                <RepositoryBrowser model={model} {...errorActions} />
+              </Show>
+              <Show when={model.view() === "pull-requests"}>
+                <PullRequestBrowser model={model} {...errorActions} />
+              </Show>
             </Show>
           </Show>
         </main>

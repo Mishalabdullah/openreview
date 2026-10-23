@@ -18,7 +18,7 @@ GitHub sign-in uses `authClient.signIn.social()` and an absolute frontend
 `/dashboard` and every nested `/dashboard/*` route wait for the session check before
 rendering and redirect signed-out users to `/`, with a retry state if verification fails. Signed-in
 users on `/` are redirected to `/dashboard`. Sign-out is available in the account
-menu and mobile navigation. Backend API authorization remains required; the
+row beside your email and mobile navigation. Backend API authorization remains required; the
 frontend guard is not a substitute for server-side access control.
 
 Use `apiFetch()` from `src/lib/api.ts` for application endpoints; it always sets
@@ -74,12 +74,45 @@ session expiry and user changes. GitHub failures do not log out a valid session.
 6. Open **Pull Requests**. Test open/closed/merged states, drafts, sort and direction.
    Changing filters restarts pagination. **All accessible repositories** is the
    intersection of user access and app installation access, not all GitHub repos.
-7. Sign out through the account menu or mobile drawer. Confirm that private data
+7. Sign out beside your email in the sidebar or mobile drawer. Confirm that private data
    disappears and revisiting a protected route returns to sign-in.
 
 Live GitHub verification requires a real authenticated browser session and an
 installed/approved GitHub App. Unit tests and mocked-browser checks do not prove
 that the configured app has live repository permissions.
+
+### Settings and model routing drafts
+
+`/dashboard/settings` provides session profile information, the existing persistent
+light/dark preference, GitHub connection management, and sign-out. It works even
+when GitHub is disconnected; it does not edit the account on the backend.
+
+`/dashboard/models` contains **Agent configuration** and **Models** views. Add
+model definitions, then assign an agent/model to a conventional commit type
+(`feat`, `fix`, `security`, `refactor`, etc.) or a custom prefix. Starter examples
+route `feat:` to GPT Sol and `security:` to GLM; these are draft display names,
+not a verified catalog. Provider model IDs must be supplied separately. Do not
+enter API keys or credentials in these public model fields.
+
+The commit preview matches `type: description`, `type(scope): description`, and
+breaking-change markers (`type!:` / `type(scope)!:`). It does not infer security
+intent from text or PR labels. Enabled prefixes are unique; unmatched valid types
+use an optional fallback, and invalid messages match no agent.
+
+**Save local draft** persists non-secret configuration in browser localStorage,
+scoped by session user ID. Unsaved changes are discarded when leaving the page.
+These drafts are not sent to an API, are not synchronized across devices, and
+**do not execute reviews**. A backend model catalog, credential handling, routing
+configuration API, and multi-commit PR policy are needed for live automation.
+Reviews and Integrations have been removed from desktop/mobile navigation.
+
+### Repository review rules
+
+The protected `/dashboard/review-rules` page is an illustrated setup guide for
+repository-local custom rules. It shows a root `.review/` folder with `rule_1.md`
+and `security.md`, copyable Markdown examples, and guidance for writing specific
+review instructions. This page does not inspect repository files or implement
+backend rule loading.
 
 ### Checks
 
