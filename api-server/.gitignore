@@ -1,0 +1,12 @@
+# Build output
+/target
+
+# Environment files
+.env
+.env.*
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
