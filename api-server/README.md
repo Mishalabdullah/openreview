@@ -36,23 +36,23 @@ nor `GITHUB_WEBHOOK_URL` is required.
 
 ## Configuration
 
-| Binding / variable | Purpose |
-| --- | --- |
-| `ENVIRONMENT` | `local`, `dev`, or `production`, set in Wrangler |
-| `BETTER_AUTH_URL` | Exact API origin (no path or trailing slash) |
-| `FRONTEND_URL` | Single explicit trusted frontend origin |
-| `BETTER_AUTH_SECRET` | Secret signing sessions and encrypting provider tokens |
-| `GITHUB_CLIENT_ID` | Environment-specific GitHub App OAuth client ID |
-| `GITHUB_CLIENT_SECRET` | Environment-specific GitHub App OAuth secret |
+| Binding / variable      | Purpose                                                                  |
+| ----------------------- | ------------------------------------------------------------------------ |
+| `ENVIRONMENT`           | `local`, `dev`, or `production`, set in Wrangler                         |
+| `BETTER_AUTH_URL`       | Exact API origin (no path or trailing slash)                             |
+| `FRONTEND_URL`          | Single explicit trusted frontend origin                                  |
+| `BETTER_AUTH_SECRET`    | Secret signing sessions and encrypting provider tokens                   |
+| `GITHUB_CLIENT_ID`      | Environment-specific GitHub App OAuth client ID                          |
+| `GITHUB_CLIENT_SECRET`  | Environment-specific GitHub App OAuth secret                             |
 | `GITHUB_WEBHOOK_SECRET` | Reserved secret for future ingestion; not used to acknowledge events yet |
-| `DATABASE_URL` | Local runtime and direct migration connection, never a frontend variable |
-| `HYPERDRIVE` | Required database binding in deployed environments |
+| `DATABASE_URL`          | Local runtime and direct migration connection, never a frontend variable |
+| `HYPERDRIVE`            | Required database binding in deployed environments                       |
 
-| Environment | API | Frontend | GitHub authorization callback |
-| --- | --- | --- | --- |
-| Local | `http://localhost:1337` | `http://localhost:5173` | `http://localhost:1337/api/auth/callback/github` |
-| Dev | `https://api.dev.openreview.si` | `https://dev.openreview.si` | `https://api.dev.openreview.si/api/auth/callback/github` |
-| Production | `https://api.openreview.si` | `https://openreview.si` | `https://api.openreview.si/api/auth/callback/github` |
+| Environment | API                             | Frontend                    | GitHub authorization callback                            |
+| ----------- | ------------------------------- | --------------------------- | -------------------------------------------------------- |
+| Local       | `http://localhost:1337`         | `http://localhost:5173`     | `http://localhost:1337/api/auth/callback/github`         |
+| Dev         | `https://api.dev.openreview.si` | `https://dev.openreview.si` | `https://api.dev.openreview.si/api/auth/callback/github` |
+| Production  | `https://api.openreview.si`     | `https://openreview.si`     | `https://api.openreview.si/api/auth/callback/github`     |
 
 Use separate GitHub Apps/OAuth credentials, auth secrets, webhook secrets,
 databases, and Hyperdrive configurations for all three environments. Separate
@@ -119,7 +119,8 @@ refresh tokens, and its server-side `getAccessToken` API can refresh when needed
 Do not assume a valid OpenReview session means the GitHub token is valid. Future
 integration code must handle expiration, revoked consent and refresh failures,
 and request reauthorization when necessary. Refresh is not a scheduled background
-task and repository access is not implemented in this phase.
+task. Repository browsing now uses that backend-only provider integration; see
+[GitHub dashboard API](docs/GITHUB_API.md).
 
 HTTP `/api/auth/get-access-token` and `/api/auth/refresh-token` are disabled to keep
 provider tokens out of browsers. Never return account rows from application APIs.
@@ -132,39 +133,51 @@ invalidate sessions and make existing encrypted provider tokens unreadable.
 Install `better-auth` in `frontend/` when integrating it, then create a browser client:
 
 ```ts
-import { createAuthClient } from 'better-auth/solid'
-import { organizationClient } from 'better-auth/client/plugins'
+import { createAuthClient } from "better-auth/solid";
+import { organizationClient } from "better-auth/client/plugins";
 
 export const authClient = createAuthClient({
-  baseURL: 'http://localhost:1337', // use the matching API origin when deployed
-  fetchOptions: { credentials: 'include' },
+  baseURL: "http://localhost:1337", // use the matching API origin when deployed
+  fetchOptions: { credentials: "include" },
   plugins: [organizationClient({ teams: { enabled: true } })],
-})
+});
 
 await authClient.signIn.social({
-  provider: 'github',
-  callbackURL: new URL('/dashboard', window.location.origin).href,
-})
+  provider: "github",
+  callbackURL: new URL("/dashboard", window.location.origin).href,
+});
 ```
 
 Use the **absolute frontend callback URL**: a relative `/dashboard` can resolve on
 the API origin instead. After GitHub redirects to the dashboard, test:
 
 ```ts
-await authClient.getSession()
-await fetch('http://localhost:1337/api/v1/me', { credentials: 'include' })
-await authClient.organization.create({ name: 'My workspace', slug: 'my-workspace' })
-await authClient.organization.list()
-await authClient.organization.setActive({ organizationId: '...' })
-await authClient.organization.inviteMember({ email: 'developer@example.com', role: 'member' })
-await authClient.organization.listUserInvitations()
-await authClient.organization.acceptInvitation({ invitationId: '...' })
-await authClient.organization.rejectInvitation({ invitationId: '...' })
-await authClient.organization.listMembers({ query: { organizationId: '...' } })
-await authClient.organization.removeMember({ memberIdOrEmail: '...', organizationId: '...' })
-await authClient.organization.update({ data: { name: 'New name' }, organizationId: '...' })
-await authClient.organization.leave({ organizationId: '...' })
-await authClient.signOut()
+await authClient.getSession();
+await fetch("http://localhost:1337/api/v1/me", { credentials: "include" });
+await authClient.organization.create({
+  name: "My workspace",
+  slug: "my-workspace",
+});
+await authClient.organization.list();
+await authClient.organization.setActive({ organizationId: "..." });
+await authClient.organization.inviteMember({
+  email: "developer@example.com",
+  role: "member",
+});
+await authClient.organization.listUserInvitations();
+await authClient.organization.acceptInvitation({ invitationId: "..." });
+await authClient.organization.rejectInvitation({ invitationId: "..." });
+await authClient.organization.listMembers({ query: { organizationId: "..." } });
+await authClient.organization.removeMember({
+  memberIdOrEmail: "...",
+  organizationId: "...",
+});
+await authClient.organization.update({
+  data: { name: "New name" },
+  organizationId: "...",
+});
+await authClient.organization.leave({ organizationId: "..." });
+await authClient.signOut();
 ```
 
 The organization plugin owns roles (`owner`, `admin`, `member`), permissions,
@@ -192,6 +205,13 @@ checks and Better Auth CSRF protection remain enabled. CORS never uses `*`.
 - `/api/auth/*` — official Better Auth handler, including all organization APIs
 - `GET /api/v1/me` — authenticated, allowlisted user fields only
 - `GET /api/v1/me/organizations` — authenticated membership-scoped list
+- `GET /api/v1/github/connection` — GitHub identity and installation status
+- `GET /api/v1/repositories` — paginated, installation-scoped repositories
+- `GET /api/v1/pull-requests` — repository-specific or combined ordered PR list
+- `GET /api/v1/dashboard/overview` — accessible repository/PR counts and recent PRs
+- `GET /api/v1/repositories/:repositoryId/pull-requests/:number` — PR detail
+- `GET /api/v1/repositories/:repositoryId/pull-requests/:number/files` — paginated files
+- `GET /api/v1/github/install` and `/install/callback` — user/browser-bound installation flow
 - `POST /api/v1/webhooks/github` — reserved, always **501**, no events accepted
 
 The reusable `requireAuth` middleware validates through Better Auth, attaches
@@ -267,6 +287,8 @@ npm run test:integration  # real Better Auth + Drizzle + disposable PGlite
 npm run test:workers      # actual Workers runtime smoke tests
 npm run typecheck
 npm run build            # packaging only, no deployment
+npm run format           # Prettier 4.0.0-alpha.13, package-wide formatting
+npm run format:check
 ```
 
 Tests use no GitHub credentials. The SQL migration is executed against disposable
@@ -285,10 +307,11 @@ through Drizzle Kit's legacy esbuild loader. The suggested forced downgrade is
 incompatible with this setup; it has not been applied. Avoid exposing development
 tool servers to untrusted networks and review upstream fixes.
 
-## Future provider integration migration (not implemented)
+## Future persistent provider integration migration
 
-Keep identity accounts separate from repository authorization. When installations
-are implemented, add application-owned tables such as:
+Keep identity accounts separate from repository authorization. Live repository
+browsing requires no new tables. When durable workspace connections and background
+synchronization are implemented, add application-owned tables such as:
 
 - `provider_connection`: internal organization FK, provider (`github`/`gitlab`),
   external account ID, nullable installation ID, connection status, timestamps;
@@ -299,14 +322,24 @@ are implemented, add application-owned tables such as:
 Use text for external IDs, not JavaScript numbers. Authorize via internal workspace
 membership. GitHub organizations/GitLab groups can supply many connections to one
 workspace; they never replace internal workspace ownership. Defer exact uniqueness
-and transfer rules until installation linking is implemented.
+and transfer rules until durable workspace installation linking is implemented.
 
 Webhook ingestion must verify HMAC-SHA256 against a size-bounded **raw body**, check
 event types, deduplicate deliveries, and durably enqueue/persist before returning
 success. The reserved route does none of this and intentionally returns 501. Do
 not enable webhook deliveries until that path is implemented. No AI reviews,
-installation token generation, repository synchronization, PR fetching, GitLab
+installation token generation, persistent repository synchronization, GitLab
 OAuth or review queue workers are included.
+
+The read-only GitHub dashboard APIs and installation setup flow are documented in
+[docs/GITHUB_API.md](docs/GITHUB_API.md), including the additional `GITHUB_APP_SLUG`
+configuration, GitHub App permissions, separate Setup URL, frontend examples,
+pagination behavior, and bounded live-query limits. No GitHub App settings were
+changed automatically and no live repository access has been tested.
+
+Formatting uses the pinned Prettier 4 prerelease, not a globally installed v3.
+Secret files, build output, dependencies, generated Wrangler declarations,
+Drizzle snapshots and the npm lockfile are excluded by `.prettierignore`.
 
 ## Documentation checked
 

@@ -8,25 +8,48 @@ import { createAuth } from "./lib/auth";
 import { me } from "./routes/me";
 import type { AppEnv } from "./types/env";
 import type { Database } from "./db";
+import { ApiError, apiErrorResponse } from "./lib/api-error";
+import { githubRoutes } from "./routes/github";
 
 type Dependencies = {
-  createDatabase: (env: AppEnv['Bindings']) => { db: Database; close: () => Promise<void> }
-  createAuth: typeof createAuth
-}
+  createDatabase: (env: AppEnv["Bindings"]) => {
+    db: Database;
+    close: () => Promise<void>;
+  };
+  createAuth: typeof createAuth;
+  githubFetch?: typeof fetch;
+};
 
 // Factories are injectable for tests; production always uses pg + Hyperdrive.
-export function createApp(dependencies: Dependencies = { createDatabase, createAuth }) {
+export function createApp(
+  dependencies: Dependencies = { createDatabase, createAuth },
+) {
   const app = new Hono<AppEnv>();
 
+  app.use("*", async (c, next) => {
+    c.set("requestId", crypto.randomUUID());
+    c.header("X-Request-ID", c.var.requestId);
+    await next();
+  });
+
   app.onError((error, c) => {
+    if (error instanceof ApiError) return apiErrorResponse(c, error);
     if (error instanceof HTTPException)
       return c.json({ error: error.message }, error.status);
     console.error(
       JSON.stringify({ event: "request_failed", method: c.req.method }),
     );
-    return c.json({ error: "Internal server error" }, 500);
+    return apiErrorResponse(
+      c,
+      new ApiError(500, "INTERNAL_ERROR", "Internal server error"),
+    );
   });
-  app.notFound((c) => c.json({ error: "Not found" }, 404));
+  app.notFound((c) =>
+    apiErrorResponse(
+      c,
+      new ApiError(404, "RESOURCE_NOT_FOUND", "Resource not found"),
+    ),
+  );
 
   app.get("/", (c) => {
     return c.text("Hello Hono!");
@@ -44,12 +67,16 @@ export function createApp(dependencies: Dependencies = { createDatabase, createA
       origin !== config.FRONTEND_URL &&
       origin !== config.BETTER_AUTH_URL
     ) {
-      return c.json({ error: "Origin not allowed" }, 403);
+      return apiErrorResponse(
+        c,
+        new ApiError(403, "ORIGIN_NOT_ALLOWED", "Origin not allowed"),
+      );
     }
     c.header("Cache-Control", "no-store");
     return cors({
       origin: config.FRONTEND_URL,
       credentials: true,
+      exposeHeaders: ["X-Request-ID", "Retry-After"],
       allowHeaders: ["Content-Type"],
       allowMethods: ["GET", "POST", "OPTIONS"],
       maxAge: 600,
@@ -64,10 +91,7 @@ export function createApp(dependencies: Dependencies = { createDatabase, createA
     }),
   );
 
-  const resources = async (
-    c: Context<AppEnv>,
-    next: Next,
-  ) => {
+  const resources = async (c: Context<AppEnv>, next: Next) => {
     const resource = dependencies.createDatabase(c.env);
     try {
       c.set("db", resource.db);
@@ -80,9 +104,14 @@ export function createApp(dependencies: Dependencies = { createDatabase, createA
   };
   app.use("/api/auth/*", resources);
   app.use("/api/v1/me/*", resources);
+  app.use("/api/v1/github/*", resources);
+  app.use("/api/v1/repositories/*", resources);
+  app.use("/api/v1/pull-requests/*", resources);
+  app.use("/api/v1/dashboard/*", resources);
 
   app.all("/api/auth/*", (c) => c.var.auth.handler(c.req.raw));
   app.route("/api/v1/me", me);
+  app.route("/api/v1", githubRoutes(dependencies.githubFetch));
 
   // Reserved only: nothing is verified, accepted or processed until a durable queue exists.
   app.post("/api/v1/webhooks/github", (c) =>

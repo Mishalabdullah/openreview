@@ -2,6 +2,8 @@
   "name": "api-server",
   "type": "module",
   "scripts": {
+    "format": "prettier --write . --cache-location .wrangler/prettier/cache.json",
+    "format:check": "prettier --check . --cache-location .wrangler/prettier/cache.json",
     "dev": "wrangler dev --port 1337",
     "deploy": "wrangler deploy --minify",
     "deploy:dev": "wrangler deploy --env dev --minify",
@@ -20,6 +22,7 @@
     "better-auth": "^1.7.12",
     "drizzle-orm": "^0.45.4",
     "hono": "^4.13.13",
+    "jose": "^6.2.13",
     "pg": "^8.23.1",
     "zod": "^4.6.7"
   },
@@ -30,6 +33,7 @@
     "auth": "^1.7.12",
     "dotenv": "^18.0.9",
     "drizzle-kit": "^0.31.11",
+    "prettier": "4.0.0-alpha.13",
     "typescript": "^7.0.2",
     "vitest": "^5.0.5",
     "wrangler": "^4.110.0"

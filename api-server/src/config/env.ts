@@ -15,6 +15,10 @@ const configSchema = z
     GITHUB_CLIENT_ID: z.string().min(1),
     GITHUB_CLIENT_SECRET: z.string().min(1),
     GITHUB_WEBHOOK_SECRET: z.string().min(1),
+    GITHUB_APP_SLUG: z
+      .string()
+      .regex(/^[a-z0-9][a-z0-9-]*$/)
+      .optional(),
   })
   .superRefine((env, ctx) => {
     const expected = {

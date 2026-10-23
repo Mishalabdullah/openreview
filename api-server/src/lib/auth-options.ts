@@ -1,14 +1,14 @@
-import { organization } from 'better-auth/plugins'
-import type { Config } from '../config/env'
+import { organization } from "better-auth/plugins";
+import type { Config } from "../config/env";
 
 export function authOptions(config: Config) {
   return {
-    appName: 'OpenReview',
+    appName: "OpenReview",
     baseURL: config.BETTER_AUTH_URL,
-    basePath: '/api/auth',
+    basePath: "/api/auth",
     secret: config.BETTER_AUTH_SECRET,
     trustedOrigins: [config.FRONTEND_URL],
-    disabledPaths: ['/get-access-token', '/refresh-token'],
+    disabledPaths: ["/get-access-token", "/refresh-token"],
     socialProviders: {
       github: {
         clientId: config.GITHUB_CLIENT_ID,
@@ -31,17 +31,19 @@ export function authOptions(config: Config) {
     advanced: {
       disableOriginCheck: false,
       disableCSRFCheck: false,
-      useSecureCookies: config.BETTER_AUTH_URL.startsWith('https:'),
-      defaultCookieAttributes: { httpOnly: true, sameSite: 'lax' as const },
+      useSecureCookies: config.BETTER_AUTH_URL.startsWith("https:"),
+      defaultCookieAttributes: { httpOnly: true, sameSite: "lax" as const },
       crossSubDomainCookies: { enabled: false },
     },
     // Never log upstream OAuth errors that may include provider payloads.
     logger: { disabled: true },
-    plugins: [organization({
-      teams: { enabled: true },
-      requireEmailVerificationOnInvitation: true,
-      // Invitations are persisted and discoverable via listUserInvitations.
-      // Email delivery is intentionally not configured in this foundation.
-    })],
-  }
+    plugins: [
+      organization({
+        teams: { enabled: true },
+        requireEmailVerificationOnInvitation: true,
+        // Invitations are persisted and discoverable via listUserInvitations.
+        // Email delivery is intentionally not configured in this foundation.
+      }),
+    ],
+  };
 }

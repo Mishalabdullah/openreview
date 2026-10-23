@@ -7,12 +7,12 @@
   "dev": { "port": 1337 },
   "observability": {
     "enabled": true,
-    "traces": { "enabled": true }
+    "traces": { "enabled": true },
   },
   "vars": {
     "ENVIRONMENT": "local",
     "BETTER_AUTH_URL": "http://localhost:1337",
-    "FRONTEND_URL": "http://localhost:5173"
+    "FRONTEND_URL": "http://localhost:5173",
   },
   "env": {
     "dev": {
@@ -22,8 +22,8 @@
       "vars": {
         "ENVIRONMENT": "dev",
         "BETTER_AUTH_URL": "https://api.dev.openreview.si",
-        "FRONTEND_URL": "https://dev.openreview.si"
-      }
+        "FRONTEND_URL": "https://dev.openreview.si",
+      },
       // Required before deployment (disable Hyperdrive query caching for auth):
       // ,"hyperdrive": [{ "binding": "HYPERDRIVE", "id": "<DEV_HYPERDRIVE_ID>" }]
     },
@@ -34,9 +34,9 @@
       "vars": {
         "ENVIRONMENT": "production",
         "BETTER_AUTH_URL": "https://api.openreview.si",
-        "FRONTEND_URL": "https://openreview.si"
-      }
+        "FRONTEND_URL": "https://openreview.si",
+      },
       // ,"hyperdrive": [{ "binding": "HYPERDRIVE", "id": "<PRODUCTION_HYPERDRIVE_ID>" }]
-    }
-  }
+    },
+  },
 }
