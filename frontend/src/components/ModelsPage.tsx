@@ -27,11 +27,17 @@ export default function ModelsPage(props: { userId: string }) {
   const [notice, setNotice] = createSignal("");
   const [error, setError] = createSignal("");
   const [preview, setPreview] = createSignal("feat(auth): add GitHub sign-in");
-  const dirty = () => JSON.stringify(config()) !== saved();
+  const serialized = createMemo(() => JSON.stringify(config()));
+  const dirty = createMemo(() => serialized() !== saved());
   const route = createMemo(() => resolveAgent(preview(), config()));
-  const model = (id: string) =>
-    config().models.find((entry) => entry.id === id)!;
-  const rule = (id: string) => config().rules.find((entry) => entry.id === id)!;
+  const modelsById = createMemo(
+    () => new Map(config().models.map((entry) => [entry.id, entry])),
+  );
+  const rulesById = createMemo(
+    () => new Map(config().rules.map((entry) => [entry.id, entry])),
+  );
+  const model = (id: string) => modelsById().get(id)!;
+  const rule = (id: string) => rulesById().get(id)!;
   const updateModel = (id: string, update: Partial<ModelDefinition>) => {
     setConfig((current) => ({
       ...current,
@@ -87,7 +93,7 @@ export default function ModelsPage(props: { userId: string }) {
       return;
     }
     try {
-      const value = JSON.stringify(config());
+      const value = serialized();
       localStorage.setItem(agentStorageKey(props.userId), value);
       setSaved(value);
       setError("");

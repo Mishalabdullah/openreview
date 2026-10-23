@@ -1,4 +1,4 @@
-import { createSignal, For, onCleanup, Show } from "solid-js";
+import { createSignal, createEffect, For, onCleanup, Show } from "solid-js";
 import type { ApiError } from "../lib/api";
 import type { DashboardData } from "../lib/dashboard-data";
 import type { PullRequest } from "../lib/github-types";
@@ -14,8 +14,17 @@ export function ApiNotice(
   props: { error: ApiError; onRetry: () => void } & Actions,
 ) {
   const [now, setNow] = createSignal(Date.now());
-  const interval = window.setInterval(() => setNow(Date.now()), 1000);
-  onCleanup(() => window.clearInterval(interval));
+  createEffect(() => {
+    const retryAt = props.error.retryAt;
+    setNow(Date.now());
+    if (retryAt == null || retryAt <= Date.now()) return;
+    const interval = window.setInterval(() => {
+      const current = Date.now();
+      setNow(current);
+      if (current >= retryAt) window.clearInterval(interval);
+    }, 1000);
+    onCleanup(() => window.clearInterval(interval));
+  });
   const seconds = () =>
     Math.max(0, Math.ceil(((props.error.retryAt ?? 0) - now()) / 1000));
   const action = () => {
@@ -279,8 +288,7 @@ export function RepositoryBrowser(props: { model: DashboardData } & Actions) {
                   type="button"
                   class="dashboard-control"
                   onClick={() => {
-                    model.chooseRepository(repo.id);
-                    model.navigate("pull-requests");
+                    model.openRepositoryPulls(repo.id);
                   }}
                 >
                   View pull requests <span aria-hidden="true">→</span>

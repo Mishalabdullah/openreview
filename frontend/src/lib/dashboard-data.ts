@@ -168,14 +168,25 @@ export function createDashboardData(options: {
 
   createEffect(
     on(
-      () => [connected(), debouncedSearch(), installationId(), archived()],
+      () => [
+        connected(),
+        debouncedSearch(),
+        installationId(),
+        archived(),
+        view(),
+      ],
       () => {
         if (!connected()) return repositories.clear();
-        void repositories.reset({
-          search: debouncedSearch() || undefined,
-          installationId: installationId() || undefined,
-          archived: archived() || undefined,
-        });
+        void repositories.sync(
+          {
+            search: debouncedSearch() || undefined,
+            installationId: installationId() || undefined,
+            archived: archived() || undefined,
+          },
+          view() === "overview" ||
+            view() === "repositories" ||
+            view() === "pull-requests",
+        );
       },
     ),
   );
@@ -184,8 +195,8 @@ export function createDashboardData(options: {
     on(
       () => [connected(), repositoryId(), view()],
       () => {
-        if (!connected() || view() !== "overview") return overview.clear();
-        void overview.load(repositoryId() || undefined);
+        if (!connected()) return overview.clear();
+        void overview.sync(repositoryId() || undefined, view() === "overview");
       },
     ),
   );
@@ -202,14 +213,17 @@ export function createDashboardData(options: {
         view(),
       ],
       () => {
-        if (!connected() || view() !== "pull-requests") return pulls.clear();
-        void pulls.reset({
-          repositoryId: repositoryId() || undefined,
-          state: state(),
-          draft: draft() || undefined,
-          sort: sort(),
-          direction: direction(),
-        });
+        if (!connected()) return pulls.clear();
+        void pulls.sync(
+          {
+            repositoryId: repositoryId() || undefined,
+            state: state(),
+            draft: draft() || undefined,
+            sort: sort(),
+            direction: direction(),
+          },
+          view() === "pull-requests",
+        );
       },
     ),
   );
@@ -220,12 +234,20 @@ export function createDashboardData(options: {
   }
 
   function navigate(next: DashboardView) {
+    if (next === view()) return;
     setView(next);
     window.history.pushState(
       null,
       "",
       next === "overview" ? "/dashboard" : `/dashboard/${next}`,
     );
+  }
+
+  function openRepositoryPulls(id: string) {
+    batch(() => {
+      chooseRepository(id);
+      navigate("pull-requests");
+    });
   }
   const handlePopState = () => {
     setView(dashboardView(window.location.pathname));
@@ -257,6 +279,7 @@ export function createDashboardData(options: {
     overview,
     repositoryId,
     chooseRepository,
+    openRepositoryPulls,
     selectedRepository,
     search,
     setSearch,

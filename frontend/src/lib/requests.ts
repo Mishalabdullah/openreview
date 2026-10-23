@@ -28,10 +28,20 @@ export function createPagedList<T extends { id: string }, Q, M = undefined>(
   let generation = 0;
   let controller: AbortController | undefined;
   let query: Q;
+  let hasQuery = false;
+  let queryKey: string | undefined;
+  let loaded = false;
 
-  function clear() {
+  function cancel() {
     generation++;
     controller?.abort();
+    setLoading(false);
+  }
+
+  function clear() {
+    cancel();
+    hasQuery = false;
+    loaded = false;
     batch(() => {
       setItems([]);
       setMetadata(undefined);
@@ -65,6 +75,7 @@ export function createPagedList<T extends { id: string }, Q, M = undefined>(
         ]);
         setMetadata(() => result.metadata);
         setPagination(result.pagination);
+        loaded = true;
       });
     } catch (cause) {
       if (current !== generation || signal.aborted) return;
@@ -72,6 +83,7 @@ export function createPagedList<T extends { id: string }, Q, M = undefined>(
       batch(() => {
         setError(failure);
         if (failure.code === "INVALID_CURSOR") {
+          loaded = false;
           setItems([]);
           setMetadata(undefined);
           setPagination(noMore);
@@ -89,9 +101,24 @@ export function createPagedList<T extends { id: string }, Q, M = undefined>(
     loading,
     error,
     clear,
+    cancel,
+    /** Retain the last selected scope; never share results between users or filters. */
+    sync(next: Q, active = true) {
+      const key = JSON.stringify(next);
+      if (!hasQuery || queryKey !== key) {
+        clear();
+        query = next;
+        queryKey = key;
+        hasQuery = true;
+      }
+      if (!active) return cancel();
+      if (!loaded && !loading() && !error()) return load(false);
+    },
     reset(next: Q) {
       clear();
       query = next;
+      queryKey = JSON.stringify(next);
+      hasQuery = true;
       return load(false);
     },
     more: () => load(true),
@@ -109,9 +136,16 @@ export function createLatestRequest<T, Q>(
   let generation = 0;
   let controller: AbortController | undefined;
   let query: Q;
-  function clear() {
+  let hasQuery = false;
+  let queryKey: string | undefined;
+  function cancel() {
     generation++;
     controller?.abort();
+    setLoading(false);
+  }
+  function clear() {
+    cancel();
+    hasQuery = false;
     batch(() => {
       setValue(undefined);
       setLoading(false);
@@ -121,6 +155,8 @@ export function createLatestRequest<T, Q>(
   async function load(next: Q) {
     clear();
     query = next;
+    queryKey = JSON.stringify(next);
+    hasQuery = true;
     const current = generation;
     controller = new AbortController();
     const signal = controller.signal;
@@ -134,5 +170,24 @@ export function createLatestRequest<T, Q>(
       if (current === generation) setLoading(false);
     }
   }
-  return { value, loading, error, clear, load, retry: () => load(query) };
+  return {
+    value,
+    loading,
+    error,
+    clear,
+    cancel,
+    load,
+    sync(next: Q, active = true) {
+      const key = JSON.stringify(next);
+      if (!hasQuery || queryKey !== key) {
+        clear();
+        query = next;
+        queryKey = key;
+        hasQuery = true;
+      }
+      if (!active) return cancel();
+      if (value() === undefined && !loading() && !error()) return load(next);
+    },
+    retry: () => load(query),
+  };
 }

@@ -1,7 +1,16 @@
-import { createEffect, createSignal, onMount, Show } from "solid-js";
-import Dashboard from "./Dashboard";
+import {
+  createEffect,
+  createSignal,
+  onMount,
+  Show,
+  lazy,
+  Suspense,
+  ErrorBoundary,
+} from "solid-js";
 import { authClient } from "./lib/auth-client";
 import { oauthErrorMessage, safeOAuthErrorCode } from "./lib/oauth-errors";
+
+const Dashboard = lazy(() => import("./Dashboard"));
 
 function App() {
   const session = authClient.useSession();
@@ -126,20 +135,43 @@ function App() {
             }
           >
             {(user) => (
-              <Dashboard
-                user={user()}
-                theme={theme()}
-                onToggleTheme={toggleTheme}
-                onSignOut={handleSignOut}
-                signingOut={signingOut()}
-                authError={authError()}
-                onReconnect={() => void handleGitHubLogin()}
-                reconnecting={signingIn()}
-                onSessionRequired={() => {
-                  setSessionInvalid(true);
-                  window.location.replace("/");
-                }}
-              />
+              <ErrorBoundary
+                fallback={
+                  <main class="auth-session-state">
+                    <h1>Unable to load the dashboard</h1>
+                    <button
+                      type="button"
+                      class="button"
+                      onClick={() => window.location.reload()}
+                    >
+                      Reload
+                    </button>
+                  </main>
+                }
+              >
+                <Suspense
+                  fallback={
+                    <main class="auth-session-state" role="status">
+                      Loading your dashboard…
+                    </main>
+                  }
+                >
+                  <Dashboard
+                    user={user()}
+                    theme={theme()}
+                    onToggleTheme={toggleTheme}
+                    onSignOut={handleSignOut}
+                    signingOut={signingOut()}
+                    authError={authError()}
+                    onReconnect={() => void handleGitHubLogin()}
+                    reconnecting={signingIn()}
+                    onSessionRequired={() => {
+                      setSessionInvalid(true);
+                      window.location.replace("/");
+                    }}
+                  />
+                </Suspense>
+              </ErrorBoundary>
             )}
           </Show>
         }

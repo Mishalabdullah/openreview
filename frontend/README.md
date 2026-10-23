@@ -43,8 +43,8 @@ The frontend integrates:
   recent PRs, nullable review metrics and sync timestamp.
 
 Overview, Repositories and Pull Requests reuse the existing dashboard shell at
-`/dashboard`, `/dashboard/repositories`, and `/dashboard/pull-requests`. Other
-navigation items remain explicitly unavailable. PR links open the real GitHub PR;
+`/dashboard`, `/dashboard/repositories`, and `/dashboard/pull-requests`. Settings,
+Models & Agents, and Review Rules are also available (see below). PR links open the real GitHub PR;
 the optional detail/files endpoints are not used because there is no diff-detail UI.
 
 `null` counts display as unknown (`—`), while zero displays as `0`. GitHub PRs are
@@ -54,6 +54,11 @@ requests, and allow continuation after empty pages. Invalid/expired cursors offe
 a restart. Rate-limit responses disable retries until `Retry-After` has elapsed;
 no automatic retry loop is used. Data is component-scoped and cleared on sign-out,
 session expiry and user changes. GitHub failures do not log out a valid session.
+
+Successful results for the current filters survive dashboard tab changes; inactive
+requests are cancelled without discarding loaded pages. Changing filters, refreshing
+the connection, losing access, or switching users clears the relevant state. Configuration
+pages do not request repository lists. Dashboard code loads only after authentication.
 
 ### Manual integration checklist
 

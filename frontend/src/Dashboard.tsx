@@ -1,4 +1,4 @@
-import { createSignal, For, Show } from "solid-js";
+import { createEffect, createSignal, For, Show, on, onCleanup } from "solid-js";
 import type { AuthUser } from "./lib/auth-client";
 import { createDashboardData } from "./lib/dashboard-data";
 import {
@@ -43,6 +43,23 @@ export default function Dashboard(props: DashboardProps) {
   });
   const title = () =>
     navigation.find((item) => item.view === model.view())?.label ?? "Overview";
+  createEffect(() => {
+    document.title = `${title()} · OpenReview`;
+  });
+  createEffect(
+    on(
+      model.view,
+      () => {
+        const frame = window.requestAnimationFrame(() =>
+          document
+            .getElementById("dashboard-main")
+            ?.focus({ preventScroll: true }),
+        );
+        onCleanup(() => window.cancelAnimationFrame(frame));
+      },
+      { defer: true },
+    ),
+  );
   const isCodeView = () =>
     model.view() !== "models" &&
     model.view() !== "settings" &&

@@ -16,6 +16,42 @@ function deferred<T>() {
 }
 
 describe("paginated requests", () => {
+  it("retains loaded pages when inactive and reuses only the same filters", async () => {
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(page(["1"], "next"))
+      .mockResolvedValueOnce(page(["2"]))
+      .mockResolvedValueOnce(page(["filtered"]));
+    const list = createPagedList(fetcher);
+    await list.sync({ state: "open" });
+    await list.more();
+    list.sync({ state: "open" }, false);
+    await list.sync({ state: "open" });
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(list.items()).toEqual([{ id: "1" }, { id: "2" }]);
+    list.sync({ state: "merged" }, false);
+    expect(list.items()).toEqual([]);
+    await list.sync({ state: "merged" });
+    expect(fetcher).toHaveBeenCalledTimes(3);
+    expect(fetcher.mock.calls[2][1]).toBeUndefined();
+  });
+
+  it("cancels an inactive first page, then reloads it on return", async () => {
+    const pending = deferred<ReturnType<typeof page>>();
+    const fetcher = vi
+      .fn()
+      .mockReturnValueOnce(pending.promise)
+      .mockResolvedValueOnce(page(["new"]));
+    const list = createPagedList(fetcher);
+    const first = list.sync({});
+    list.sync({}, false);
+    expect(fetcher.mock.calls[0][2].aborted).toBe(true);
+    await list.sync({});
+    pending.resolve(page(["stale"]));
+    await first;
+    expect(list.items()).toEqual([{ id: "new" }]);
+  });
+
   it("loads only requested pages, retains filters and deduplicates by string ID", async () => {
     const fetcher = vi
       .fn()
@@ -105,6 +141,22 @@ describe("paginated requests", () => {
 });
 
 describe("overview requests", () => {
+  it("retains the last successful scope while inactive but clears on scope or user reset", async () => {
+    const fetcher = vi.fn().mockResolvedValue({ count: 0 });
+    const request = createLatestRequest(fetcher);
+    await request.sync(undefined);
+    request.sync(undefined, false);
+    await request.sync(undefined);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    request.sync("other-repo", false);
+    expect(request.value()).toBeUndefined();
+    await request.sync("other-repo");
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    request.clear();
+    expect(request.value()).toBeUndefined();
+    await request.sync("other-repo");
+    expect(fetcher).toHaveBeenCalledTimes(3);
+  });
   it("clears previous scope data while loading and ignores late responses", async () => {
     const old = deferred<{ count: number }>();
     const fetcher = vi
