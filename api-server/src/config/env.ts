@@ -19,6 +19,11 @@ const configSchema = z
       .string()
       .regex(/^[a-z0-9][a-z0-9-]*$/)
       .optional(),
+    GITHUB_APP_ID: z.string().regex(/^\d+$/).optional(),
+    GITHUB_APP_PRIVATE_KEY: z.string().min(1).optional(),
+    OPENAI_API_KEY: z.string().min(1).optional(),
+    OPEN_AI_KEY: z.string().min(1).optional(),
+    OPENAI_REVIEW_MODEL: z.string().min(1).default("gpt-5-mini"),
   })
   .superRefine((env, ctx) => {
     const expected = {

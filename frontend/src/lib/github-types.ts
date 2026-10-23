@@ -43,6 +43,29 @@ export type Repository = {
   updatedAt: string | null;
   permissions: { canRead: boolean; canWrite: boolean; canAdmin: boolean };
 };
+export type ReviewRun = {
+  id: string;
+  repositoryId: string;
+  pullNumber: number;
+  headSha: string;
+  status:
+    "queued" | "reviewing" | "completed" | "failed" | "superseded" | "skipped";
+  publicationStatus: "pending" | "published" | "failed" | "not_requested";
+  result: {
+    summary: string;
+    partial: boolean;
+    limitations: string[];
+    findings: {
+      path: string;
+      line: number;
+      severity: "high" | "medium" | "low";
+      title: string;
+      description: string;
+    }[];
+  } | null;
+  githubReviewUrl: string | null;
+  errorCode: string | null;
+};
 export type PullRequest = {
   id: string;
   number: number;
@@ -59,12 +82,12 @@ export type PullRequest = {
   updatedAt: string | null;
   closedAt: string | null;
   mergedAt: string | null;
-  appReview: null;
+  appReview: ReviewRun | null;
 };
 export type Overview = {
   repositoryCount: number | null;
   openPullRequestCount: number | null;
-  reviewMetrics: null;
+  reviewMetrics: { completed: number; pending: number; failed: number } | null;
   recentPullRequests: PullRequest[];
   lastSyncedAt: string | null;
 };

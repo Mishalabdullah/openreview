@@ -25,6 +25,7 @@ import {
 import { file, mapPullRequest } from "../lib/github/schemas";
 import { requireAuth } from "../middleware/auth";
 import type { AppEnv } from "../types/env";
+import { registerReviewOverlay, registerReviewRoutes } from "./reviews";
 
 function parseQuery<T>(c: Context<AppEnv>, schema: z.ZodType<T>): T {
   const url = new URL(c.req.url);
@@ -85,7 +86,8 @@ async function githubService(
       c.var.user.id,
       linked.id,
       token.accessToken,
-      c.req.query("refresh") === "true" ||
+      c.req.method !== "GET" ||
+        c.req.query("refresh") === "true" ||
         /(?:^|,)\s*no-cache\s*(?:,|$)/i.test(
           c.req.header("Cache-Control") ?? "",
         ) ||
@@ -167,6 +169,7 @@ export function githubRoutes(
     routes.use(path, requireAuth, requireGitHub);
   }
 
+  registerReviewOverlay(routes);
   // Never cache installation state/callbacks, files, errors or cursor-bearing pages.
   for (const path of [
     "/github/connection",
@@ -390,6 +393,7 @@ export function githubRoutes(
     throw notFound();
   });
 
+  registerReviewRoutes(routes);
   routes.onError((error, c) => {
     if (
       error instanceof ApiError &&

@@ -11,6 +11,8 @@ import type { Database } from "./db";
 import { ApiError, apiErrorResponse } from "./lib/api-error";
 import { githubRoutes } from "./routes/github";
 import type { GitHubCacheStore } from "./lib/github/cache";
+import { reviewWebhook } from "./routes/review-webhook";
+import { reviewWorker } from "./review-worker";
 
 type Dependencies = {
   createDatabase: (env: AppEnv["Bindings"]) => {
@@ -66,6 +68,7 @@ export function createApp(
     const origin = c.req.header("Origin");
     if (
       origin &&
+      c.req.path !== "/api/v1/webhooks/github" &&
       origin !== config.FRONTEND_URL &&
       origin !== config.BETTER_AUTH_URL
     ) {
@@ -116,6 +119,7 @@ export function createApp(
   app.use("/api/v1/repositories/*", resources);
   app.use("/api/v1/pull-requests/*", resources);
   app.use("/api/v1/dashboard/*", resources);
+  app.use("/api/v1/webhooks/*", resources);
 
   app.all("/api/auth/*", (c) => c.var.auth.handler(c.req.raw));
   app.route("/api/v1/me", me);
@@ -124,12 +128,9 @@ export function createApp(
     githubRoutes(dependencies.githubFetch, dependencies.githubCache),
   );
 
-  // Reserved only: nothing is verified, accepted or processed until a durable queue exists.
-  app.post("/api/v1/webhooks/github", (c) =>
-    c.json({ error: "Webhook ingestion is not enabled" }, 501),
-  );
+  app.route("/api/v1", reviewWebhook());
 
   return app;
 }
 
-export default createApp();
+export default Object.assign(createApp(), reviewWorker);

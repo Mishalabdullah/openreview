@@ -3,6 +3,7 @@ import type { ApiError } from "../lib/api";
 import type { DashboardData } from "../lib/dashboard-data";
 import type { PullRequest } from "../lib/github-types";
 import { formatTimestamp } from "../lib/format";
+import { CodeReview, RepositoryReviewSettings } from "./CodeReviews";
 
 type Actions = {
   onReconnect: () => void;
@@ -395,6 +396,7 @@ export function PullCards(props: { items: PullRequest[] }) {
                 </For>
               </div>
             </Show>
+            <CodeReview pull={pull} />
           </article>
         )}
       </For>
@@ -409,6 +411,16 @@ export function PullRequestBrowser(props: { model: DashboardData } & Actions) {
       <div class="recent-heading-row">
         <h2 id="pulls-heading">Pull requests</h2>
       </div>
+      <Show
+        when={model.repositoryId()}
+        fallback={
+          <p class="section-message">
+            Select a repository to configure automatic reviews.
+          </p>
+        }
+      >
+        {(id) => <RepositoryReviewSettings repositoryId={id()} />}
+      </Show>
       <div class="dashboard-filters">
         <label>
           State

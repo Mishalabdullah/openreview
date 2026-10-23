@@ -11,5 +11,6 @@ export const auth = betterAuth(
     GITHUB_CLIENT_ID: "schema-generation-only",
     GITHUB_CLIENT_SECRET: "schema-generation-only",
     GITHUB_WEBHOOK_SECRET: "schema-generation-only",
+    OPENAI_REVIEW_MODEL: "gpt-5-mini",
   }),
 );

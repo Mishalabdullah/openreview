@@ -212,7 +212,9 @@ checks and Better Auth CSRF protection remain enabled. CORS never uses `*`.
 - `GET /api/v1/repositories/:repositoryId/pull-requests/:number` — PR detail
 - `GET /api/v1/repositories/:repositoryId/pull-requests/:number/files` — paginated files
 - `GET /api/v1/github/install` and `/install/callback` — user/browser-bound installation flow
-- `POST /api/v1/webhooks/github` — reserved, always **501**, no events accepted
+- `POST /api/v1/webhooks/github` — signature-verified review ingestion; requires review setup
+- `GET|POST /api/v1/repositories/:repositoryId/reviews/settings` — admin opt-in
+- `GET|POST /api/v1/repositories/:repositoryId/pull-requests/:number/reviews` — history/request/retry
 
 The reusable `requireAuth` middleware validates through Better Auth, attaches
 typed user/session context, and forwards refreshed session cookies. Organization
@@ -324,12 +326,13 @@ membership. GitHub organizations/GitLab groups can supply many connections to on
 workspace; they never replace internal workspace ownership. Defer exact uniqueness
 and transfer rules until durable workspace installation linking is implemented.
 
-Webhook ingestion must verify HMAC-SHA256 against a size-bounded **raw body**, check
-event types, deduplicate deliveries, and durably enqueue/persist before returning
-success. The reserved route does none of this and intentionally returns 501. Do
-not enable webhook deliveries until that path is implemented. No AI reviews,
-installation token generation, persistent repository synchronization, GitLab
-OAuth or review queue workers are included.
+Code reviews now have signature-verified webhook ingestion, PostgreSQL-backed
+deduplication/jobs, a Cloudflare Queue consumer, recovery dispatch, installation
+tokens, bounded OpenAI analysis, GitHub COMMENT reviews, and dashboard results.
+Automatic reviews require administrator opt-in per repository, not a global enable flag.
+See [docs/CODE_REVIEWS.md](docs/CODE_REVIEWS.md) before enabling deliveries. The new
+migration has been generated, not applied; queues have not been provisioned or
+deployed. Persistent repository synchronization and GitLab OAuth remain deferred.
 
 The read-only GitHub dashboard APIs and installation setup flow are documented in
 [docs/GITHUB_API.md](docs/GITHUB_API.md), including the additional `GITHUB_APP_SLUG`

@@ -392,11 +392,17 @@ export default function Dashboard(props: DashboardProps) {
                     </p>
                   </article>
                   <article class="metric-card">
-                    <p class="metric-value" aria-label="Not available">
-                      —
+                    <p class="metric-value">
+                      {formatCount(
+                        model.overview.value()?.reviewMetrics?.completed,
+                      )}
                     </p>
                     <h2>AI reviews</h2>
-                    <p class="metric-context">Not enabled yet</p>
+                    <p class="metric-context">
+                      {model.overview.value()?.reviewMetrics
+                        ? `${model.overview.value()!.reviewMetrics!.pending} pending · ${model.overview.value()!.reviewMetrics!.failed} need attention`
+                        : "Backend setup required"}
+                    </p>
                   </article>
                 </section>
                 <Show when={model.overview.error()}>

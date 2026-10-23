@@ -52,6 +52,12 @@ describe("credentialed API transport", () => {
     [502, "GITHUB_INCOMPLETE_RESULTS"],
     [503, "GITHUB_QUERY_TOO_LARGE"],
     [422, "GITHUB_SEARCH_LIMIT"],
+    [503, "REVIEWS_NOT_CONFIGURED"],
+    [503, "REVIEW_QUEUE_UNAVAILABLE"],
+    [409, "REVIEWS_NOT_ENABLED"],
+    [403, "REVIEW_ADMIN_REQUIRED"],
+    [403, "REVIEW_WRITE_REQUIRED"],
+    [409, "PR_NOT_REVIEWABLE"],
   ])(
     "preserves %s/%s without exposing raw provider messages",
     async (status, code) => {

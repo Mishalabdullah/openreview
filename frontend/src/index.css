@@ -2200,3 +2200,55 @@ code {
     transition: none !important;
   }
 }
+.code-review {
+  grid-column: 1 / -1;
+  width: 100%;
+  border-top: 1px solid var(--line);
+  padding-top: 1rem;
+  margin-top: 0.5rem;
+}
+.code-review-heading,
+.code-review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+.code-review-heading a {
+  font-size: 0.85rem;
+}
+.code-review-summary,
+.code-review-findings p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.code-review-findings {
+  padding-left: 1.4rem;
+}
+.code-review-findings li {
+  margin-block: 1rem;
+}
+.code-review-findings code {
+  display: block;
+  font-size: 0.8rem;
+  margin-top: 0.4rem;
+  overflow-wrap: anywhere;
+}
+.code-review-settings {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+}
+.code-review-settings div {
+  flex: 1 1 20rem;
+}
+.code-review-settings p {
+  font-size: 0.85rem;
+  line-height: 1.5;
+  margin-bottom: 0;
+}

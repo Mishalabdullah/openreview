@@ -33,6 +33,17 @@ export class ApiError extends Error {
 
 export function apiErrorMessage(code: string): string {
   const messages: Record<string, string> = {
+    REVIEWS_NOT_CONFIGURED:
+      "Code review configuration is incomplete on the backend.",
+    REVIEW_QUEUE_UNAVAILABLE:
+      "The background review queue is unavailable. Please retry later.",
+    REVIEWS_NOT_ENABLED:
+      "Enable reviews for this repository first. A repository administrator can do this from its PR page.",
+    REVIEW_ADMIN_REQUIRED:
+      "A repository administrator must enable automatic reviews.",
+    REVIEW_WRITE_REQUIRED:
+      "Repository write access is required to request a review.",
+    PR_NOT_REVIEWABLE: "Only open, non-draft PRs can be reviewed.",
     SESSION_REQUIRED:
       "Your OpenReview session has expired. Please sign in again.",
     GITHUB_REAUTH_REQUIRED:

@@ -163,10 +163,10 @@ describe("infrastructure and configuration", () => {
     logger.mockRestore();
   });
 
-  it("does not acknowledge unimplemented webhooks", async () => {
+  it("rejects unsigned webhooks", async () => {
     expect(
       (await request("/api/v1/webhooks/github", undefined, {})).status,
-    ).toBe(501);
+    ).toBe(401);
   });
 });
 

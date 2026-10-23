@@ -5,6 +5,10 @@ import { OpaqueTokens } from "../../src/lib/github/pagination";
 import { z } from "zod";
 import { GitHubClient } from "../../src/lib/github/client";
 import { defaultGitHubCache, GitHubCache } from "../../src/lib/github/cache";
+import { installationClient } from "../../src/lib/reviews/github";
+import { jwtVerify } from "jose";
+import { Buffer } from "node:buffer";
+import { createPrivateKey } from "node:crypto";
 
 const bindings: Bindings = {
   ENVIRONMENT: "local",
@@ -18,6 +22,97 @@ const bindings: Bindings = {
 };
 
 describe("actual Workers runtime", () => {
+  it("accepts signed GitHub ping deliveries without requiring a session or database connection", async () => {
+    const body = "{}";
+    const key = await crypto.subtle.importKey(
+      "raw",
+      new TextEncoder().encode(bindings.GITHUB_WEBHOOK_SECRET),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"],
+    );
+    const signature = Buffer.from(
+      new Uint8Array(
+        await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(body)),
+      ),
+    ).toString("hex");
+    const response = await app.request(
+      "http://localhost:1337/api/v1/webhooks/github",
+      {
+        method: "POST",
+        headers: {
+          "X-GitHub-Event": "ping",
+          "X-GitHub-Delivery": crypto.randomUUID(),
+          "X-Hub-Signature-256": `sha256=${signature}`,
+        },
+        body,
+      },
+      bindings,
+    );
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ accepted: true });
+  });
+  it("defers queue deliveries without database IO when review credentials are missing", async () => {
+    let delay = 0;
+    await app.queue(
+      {
+        queue: "test",
+        messages: [],
+        metadata: { metrics: { backlogCount: 0, backlogBytes: 0 } },
+        ackAll() {},
+        retryAll(options) {
+          delay = options?.delaySeconds ?? 0;
+        },
+      },
+      bindings,
+    );
+    expect(delay).toBe(300);
+  });
+  it("signs GitHub App credentials and exchanges installation tokens inside Workers", async () => {
+    const pair = await crypto.subtle.generateKey(
+      {
+        name: "RSASSA-PKCS1-v1_5",
+        modulusLength: 2048,
+        publicExponent: new Uint8Array([1, 0, 1]),
+        hash: "SHA-256",
+      },
+      true,
+      ["sign", "verify"],
+    );
+    if (!("privateKey" in pair)) throw new Error("Expected an RSA key pair");
+    const bytes = await crypto.subtle.exportKey("pkcs8", pair.privateKey);
+    if (!(bytes instanceof ArrayBuffer))
+      throw new Error("Expected PKCS8 bytes");
+    const pem = `-----BEGIN PRIVATE KEY-----\n${Buffer.from(new Uint8Array(bytes)).toString("base64")}\n-----END PRIVATE KEY-----`;
+    let calls = 0;
+    const transport: typeof fetch = async (input, init) => {
+      const token = new Headers(init?.headers).get("Authorization")!.slice(7);
+      expect(
+        (
+          await jwtVerify(token, pair.publicKey, {
+            algorithms: ["RS256"],
+            issuer: "123",
+          })
+        ).payload.iss,
+      ).toBe("123");
+      expect(init?.redirect).toBe("manual");
+      calls++;
+      return String(input).endsWith("/access_tokens")
+        ? Response.json({ token: "installation-token" })
+        : Response.json({ id: 10, suspended_at: null });
+    };
+    await installationClient(
+      {
+        appId: "123",
+        privateKey: createPrivateKey(pem)
+          .export({ type: "pkcs1", format: "pem" })
+          .toString(),
+      },
+      "10",
+      transport,
+    );
+    expect(calls).toBe(2);
+  });
   it("persists encrypted GitHub responses across request-owned cache handles", async () => {
     const store = defaultGitHubCache();
     expect(store).toBeDefined();

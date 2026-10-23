@@ -86,7 +86,10 @@ Omit `repositoryId` for the globally ordered combined list. Filters:
 `closed` means closed **without merging**; use `merged` or `all` for merged PRs.
 Merged state is derived from `merged_at`, not GitHub's raw `closed` status. Each
 PR has string IDs, head/base refs and SHAs, author (null for unavailable users),
-labels, nullable ISO timestamps and **`appReview: null`**.
+labels and nullable ISO timestamps. `appReview` is null until a saved OpenReview
+run exists; when review support is enabled it contains the latest matching run,
+findings, publication status and a `stale` flag for an older commit. See
+[CODE_REVIEWS.md](CODE_REVIEWS.md).
 
 Repository-specific lists use the REST pulls API. Combined lists use disjoint,
 access-checked repository scopes in GitHub's PR-only search API, merge those sorted
@@ -105,7 +108,11 @@ recentPullRequests, lastSyncedAt } }`.
 - Counts are null if GitHub marks count queries incomplete; unavailable counts
   are never fabricated as zero. PR result queries that are incomplete fail explicitly.
 - Recent PRs use the same PR structure and are capped at five.
-- `reviewMetrics` stays null. `lastSyncedAt` stays null because these APIs fetch
+- `reviewMetrics` is null when review credentials are missing, otherwise it contains database
+  counts `{ completed, pending, failed }` across the accessible repository scope.
+  These count runs; a completed analysis with failed publication can appear in both
+  completed and failed counts. Review progress is overlaid **outside** the GitHub
+  response cache. `lastSyncedAt` stays null because these APIs fetch
   live data and do not claim a persisted synchronization occurred.
 
 ### Detail and files
