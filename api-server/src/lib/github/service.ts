@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { ApiError, notFound } from "../api-error";
 import { GitHubClient } from "./client";
+import type { GitHubCache } from "./cache";
 import {
   OpaqueTokens,
   fingerprint,
@@ -59,8 +60,9 @@ export class GitHubService {
     secret: string,
     userId: string,
     fetcher?: typeof fetch,
+    cache?: GitHubCache,
   ) {
-    this.client = new GitHubClient(token, fetcher);
+    this.client = new GitHubClient(token, fetcher, cache);
     this.tokens = new OpaqueTokens(secret, userId);
   }
 
@@ -97,10 +99,13 @@ export class GitHubService {
           z.object({ offset: z.number().int().min(0).max(100_000) }),
         )
       : { offset: 0 };
-    const user = (await this.client.get("/user", githubUser)).data;
     const page = Math.floor(state.offset / 100) + 1;
     const offset = state.offset % 100;
-    const response = await this.installationPage(page);
+    const [identity, response] = await Promise.all([
+      this.client.get("/user", githubUser),
+      this.installationPage(page),
+    ]);
+    const user = identity.data;
     const items = response.data.installations.slice(offset, offset + limit);
     const next = state.offset + items.length;
     return {
@@ -473,45 +478,62 @@ export class GitHubService {
         );
       return item;
     };
-    const heads = await Promise.all(queries.map((_, index) => head(index)));
     const byName = new Map(
       repos.map((repo) => [repo.full_name.toLowerCase(), repo]),
     );
-    for (
-      let scanned = 0;
-      scanned < query.limit + 10 && data.length < query.limit;
-      scanned++
-    ) {
-      const candidates = heads.flatMap((item, index) =>
-        item ? [{ item, index }] : [],
+    let heads = await Promise.all(queries.map((_, index) => head(index)));
+    let scanned = 0;
+    while (scanned < query.limit + 10 && data.length < query.limit) {
+      // Select in global order, then hydrate at most five PRs concurrently.
+      // Keep consumed offsets aligned even when a PR changed state after search.
+      const batch: { repo: Repository; number: number }[] = [];
+      const batchSize = Math.min(
+        5,
+        query.limit - data.length,
+        query.limit + 10 - scanned,
       );
-      if (!candidates.length) break;
-      candidates.sort((a, b) => {
-        const field = query.sort === "created" ? "created_at" : "updated_at";
-        const comparison =
-          a.item[field].localeCompare(b.item[field]) ||
-          a.item.id.localeCompare(b.item.id);
-        return query.direction === "asc" ? comparison : -comparison;
-      });
-      const selected = candidates[0];
-      const repositoryURL = new URL(selected.item.repository_url);
-      const name = repositoryURL.pathname
-        .replace(/^\/repos\//, "")
-        .toLowerCase();
-      const repo = byName.get(name);
-      if (!repo || repositoryURL.origin !== "https://api.github.com")
-        throw notFound();
-      const pr = await this.pull(repo, selected.item.number);
-      const normalized = mapPullRequest(pr, repo);
-      if (
-        (query.state === "all" || normalized.state === query.state) &&
-        (query.draft === undefined || normalized.draft === query.draft)
-      )
-        data.push(normalized);
-      state.offsets[selected.index]++;
-      // Avoid fetching beyond the requested page, especially at GitHub's search ceiling.
-      if (data.length < query.limit)
-        heads[selected.index] = await head(selected.index);
+      while (batch.length < batchSize) {
+        const candidates = heads.flatMap((item, index) =>
+          item ? [{ item, index }] : [],
+        );
+        if (!candidates.length) break;
+        candidates.sort((a, b) => {
+          const field = query.sort === "created" ? "created_at" : "updated_at";
+          const comparison =
+            a.item[field].localeCompare(b.item[field]) ||
+            a.item.id.localeCompare(b.item.id);
+          return query.direction === "asc" ? comparison : -comparison;
+        });
+        const selected = candidates[0];
+        const repositoryURL = new URL(selected.item.repository_url);
+        const name = repositoryURL.pathname
+          .replace(/^\/repos\//, "")
+          .toLowerCase();
+        const repo = byName.get(name);
+        if (!repo || repositoryURL.origin !== "https://api.github.com")
+          throw notFound();
+        batch.push({ repo, number: selected.item.number });
+        scanned++;
+        state.offsets[selected.index]++;
+        // Do not fetch a new search page beyond the requested batch.
+        if (batch.length < batchSize)
+          heads[selected.index] = await head(selected.index);
+      }
+      if (!batch.length) break;
+      const hydrated = await Promise.all(
+        batch.map(async ({ repo, number }) =>
+          mapPullRequest(await this.pull(repo, number), repo),
+        ),
+      );
+      for (const normalized of hydrated) {
+        if (
+          (query.state === "all" || normalized.state === query.state) &&
+          (query.draft === undefined || normalized.draft === query.draft)
+        )
+          data.push(normalized);
+      }
+      if (data.length < query.limit && scanned < query.limit + 10)
+        heads = await Promise.all(queries.map((_, index) => head(index)));
     }
     const hasMore = queries.some((_, index) => {
       const result = pages.get(
@@ -535,24 +557,26 @@ export class GitHubService {
   async overview(repositoryId?: string) {
     const repos = await this.inventory(repositoryId);
     const queries = this.searchQueries(repos, { state: "open" });
-    const counts = await Promise.all(
-      queries.map(async (q) => {
-        const response = await this.client.get(
-          "/search/issues",
-          searchResponse,
-          { q, per_page: 1 },
-        );
-        return response.data.incomplete_results
-          ? null
-          : response.data.total_count;
+    const [counts, recent] = await Promise.all([
+      Promise.all(
+        queries.map(async (q) => {
+          const response = await this.client.get(
+            "/search/issues",
+            searchResponse,
+            { q, per_page: 1 },
+          );
+          return response.data.incomplete_results
+            ? null
+            : response.data.total_count;
+        }),
+      ),
+      this.combinedPulls(repos, {
+        state: "all",
+        sort: "updated",
+        direction: "desc",
+        limit: 5,
       }),
-    );
-    const recent = await this.combinedPulls(repos, {
-      state: "all",
-      sort: "updated",
-      direction: "desc",
-      limit: 5,
-    });
+    ]);
     return {
       data: {
         repositoryCount: repos.length,

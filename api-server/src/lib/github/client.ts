@@ -1,16 +1,43 @@
 import { z } from "zod";
 import { ApiError, notFound, reauthorizationRequired } from "../api-error";
+import type { GitHubCache } from "./cache";
 
 export type GitHubFetch = typeof fetch;
 
 export class GitHubClient {
   private calls = 0;
+  get requestCount() {
+    return this.calls;
+  }
   constructor(
     private token: string,
     private fetcher: GitHubFetch = fetch,
+    readonly cache?: GitHubCache,
   ) {}
 
   async get<T>(
+    path: string,
+    schema: z.ZodType<T>,
+    parameters: Record<string, string | number | undefined> = {},
+  ) {
+    const resource = `upstream:${JSON.stringify([path, Object.entries(parameters).sort(([a], [b]) => a.localeCompare(b))])}`;
+    const cached = await this.cache?.read(resource);
+    if (cached) {
+      try {
+        const result = z
+          .object({ data: schema, hasNext: z.boolean() })
+          .safeParse(JSON.parse(cached.body));
+        if (result.success) return result.data;
+      } catch {
+        // Invalid cache entries are misses, never API failures.
+      }
+    }
+    const result = await this.fetchGet(path, schema, parameters);
+    await this.cache?.write(resource, JSON.stringify(result));
+    return result;
+  }
+
+  private async fetchGet<T>(
     path: string,
     schema: z.ZodType<T>,
     parameters: Record<string, string | number | undefined> = {},

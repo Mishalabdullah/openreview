@@ -4,6 +4,7 @@ import type { Bindings } from "../../src/types/env";
 import { OpaqueTokens } from "../../src/lib/github/pagination";
 import { z } from "zod";
 import { GitHubClient } from "../../src/lib/github/client";
+import { defaultGitHubCache, GitHubCache } from "../../src/lib/github/cache";
 
 const bindings: Bindings = {
   ENVIRONMENT: "local",
@@ -17,6 +18,24 @@ const bindings: Bindings = {
 };
 
 describe("actual Workers runtime", () => {
+  it("persists encrypted GitHub responses across request-owned cache handles", async () => {
+    const store = defaultGitHubCache();
+    expect(store).toBeDefined();
+    const user = crypto.randomUUID();
+    const cache = () =>
+      new GitHubCache(
+        store,
+        bindings.BETTER_AUTH_SECRET,
+        bindings.BETTER_AUTH_URL,
+        user,
+        "account",
+        "token",
+      );
+    await cache().write("api:overview", '{"data":{"repositoryCount":2}}');
+    expect(await cache().read("api:overview")).toMatchObject({
+      body: '{"data":{"repositoryCount":2}}',
+    });
+  });
   it("calls GitHub transport with the global receiver and a Workers-supported redirect mode", async () => {
     let calls = 0;
     const transport: typeof fetch = async function (

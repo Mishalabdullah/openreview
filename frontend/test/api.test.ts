@@ -13,6 +13,26 @@ import { oauthErrorMessage, safeOAuthErrorCode } from "../src/lib/oauth-errors";
 afterEach(() => vi.useRealTimers());
 
 describe("credentialed API transport", () => {
+  it("bypasses each section's backend cache once after an explicit refresh", async () => {
+    const fetcher = vi.fn<typeof fetch>(async () =>
+      Response.json({ data: [] }),
+    );
+    vi.stubGlobal("fetch", fetcher);
+    const api = createGitHubApi(vi.fn());
+    const signal = new AbortController().signal;
+    api.refresh();
+    await api.connection(undefined, signal);
+    await api.repositories({}, undefined, signal);
+    await api.overview(undefined, signal);
+    await api.overview(undefined, signal);
+    const urls = fetcher.mock.calls.map((call) => new URL(String(call[0])));
+    expect(
+      urls
+        .slice(0, 3)
+        .every((url) => url.searchParams.get("refresh") === "true"),
+    ).toBe(true);
+    expect(urls[3].searchParams.has("refresh")).toBe(false);
+  });
   it("always includes cookies, even if a caller requests omission", async () => {
     const fetcher = vi.fn().mockResolvedValue(new Response("{}"));
     vi.stubGlobal("fetch", fetcher);

@@ -12,6 +12,11 @@ import {
 } from "../lib/api-error";
 import { GitHubService } from "../lib/github/service";
 import {
+  defaultGitHubCache,
+  GitHubCache,
+  type GitHubCacheStore,
+} from "../lib/github/cache";
+import {
   OpaqueTokens,
   pageQuery,
   pullQuery,
@@ -40,7 +45,11 @@ function parseQuery<T>(c: Context<AppEnv>, schema: z.ZodType<T>): T {
   return parsed.data;
 }
 
-async function githubService(c: Context<AppEnv>, fetcher?: typeof fetch) {
+async function githubService(
+  c: Context<AppEnv>,
+  fetcher?: typeof fetch,
+  cacheStore?: GitHubCacheStore,
+) {
   const [linked] = await c.var.db
     .select({ id: account.id })
     .from(account)
@@ -69,6 +78,19 @@ async function githubService(c: Context<AppEnv>, fetcher?: typeof fetch) {
     c.var.config.BETTER_AUTH_SECRET,
     c.var.user.id,
     fetcher,
+    new GitHubCache(
+      cacheStore,
+      c.var.config.BETTER_AUTH_SECRET,
+      c.var.config.BETTER_AUTH_URL,
+      c.var.user.id,
+      linked.id,
+      token.accessToken,
+      c.req.query("refresh") === "true" ||
+        /(?:^|,)\s*no-cache\s*(?:,|$)/i.test(
+          c.req.header("Cache-Control") ?? "",
+        ) ||
+        c.req.path.startsWith("/api/v1/github/install"),
+    ),
   );
 }
 
@@ -82,11 +104,15 @@ function installURL(c: Context<AppEnv>) {
   return `${c.var.config.BETTER_AUTH_URL}/api/v1/github/install`;
 }
 
-export function githubRoutes(fetcher?: typeof fetch) {
+export function githubRoutes(
+  fetcher?: typeof fetch,
+  cacheStore: GitHubCacheStore | null | undefined = defaultGitHubCache(),
+) {
   const routes = new Hono<AppEnv>();
   const requireGitHub: MiddlewareHandler<AppEnv> = async (c, next) => {
+    const started = performance.now();
     try {
-      const service = await githubService(c, fetcher);
+      const service = await githubService(c, fetcher, cacheStore ?? undefined);
       if (!service) {
         if (c.req.path === "/api/v1/github/connection") {
           return c.json({
@@ -103,7 +129,15 @@ export function githubRoutes(fetcher?: typeof fetch) {
         throw reauthorizationRequired();
       }
       c.set("github", service);
-      await next();
+      const ready = performance.now();
+      try {
+        await next();
+      } finally {
+        c.header(
+          "Server-Timing",
+          `github_setup;dur=${(ready - started).toFixed(1)}, github;dur=${(performance.now() - ready).toFixed(1)};desc="${service.client.requestCount} upstream requests, ${service.client.cache?.hits ?? 0} cache hits"`,
+        );
+      }
     } catch (error) {
       if (
         error instanceof ApiError &&
@@ -131,6 +165,54 @@ export function githubRoutes(fetcher?: typeof fetch) {
     "/dashboard/*",
   ]) {
     routes.use(path, requireAuth, requireGitHub);
+  }
+
+  // Never cache installation state/callbacks, files, errors or cursor-bearing pages.
+  for (const path of [
+    "/github/connection",
+    "/repositories",
+    "/pull-requests",
+    "/dashboard/overview",
+  ]) {
+    routes.use(path, async (c, next) => {
+      const cache = c.var.github.client.cache;
+      const url = new URL(c.req.url);
+      if (
+        c.req.method !== "GET" ||
+        url.searchParams.has("cursor") ||
+        !cache?.enabled
+      )
+        return next();
+      if (
+        [...url.searchParams.keys()].some(
+          (key) => url.searchParams.getAll(key).length !== 1,
+        )
+      )
+        return next();
+      url.searchParams.delete("refresh");
+      url.searchParams.sort();
+      const resource = `api:${url.pathname}?${url.searchParams}`;
+      const cached = await cache.read(resource);
+      if (cached) {
+        c.header("X-GitHub-Cache", "HIT");
+        c.header("X-GitHub-Cache-Age", String(cached.age));
+        c.header("Content-Type", "application/json");
+        return c.body(cached.body);
+      }
+      c.header("X-GitHub-Cache", cache.bypassed ? "BYPASS" : "MISS");
+      await next();
+      if (
+        c.res.status === 200 &&
+        c.res.headers.get("Content-Type")?.includes("application/json")
+      ) {
+        // Await the local write: it holds no database resources beyond this request
+        // and makes the next navigation immediately eligible for a cache hit.
+        const body = await c.res.clone().text();
+        const result = JSON.parse(body);
+        if (result.data && result.data.status !== "reauthorization_required")
+          await cache.write(resource, body);
+      }
+    });
   }
 
   routes.get("/github/connection", async (c) => {

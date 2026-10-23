@@ -25,6 +25,7 @@ import { GitHubService } from "../src/lib/github/service";
 import { OpaqueTokens, fingerprint } from "../src/lib/github/pagination";
 import * as schema from "../src/db/auth-schema";
 import type { Bindings } from "../src/types/env";
+import { memoryGitHubCache } from "./helpers/github-cache";
 
 const env: Bindings = {
   ENVIRONMENT: "local",
@@ -252,6 +253,105 @@ afterAll(async () => {
 });
 
 describe("GitHub frontend API", () => {
+  it("serves warm dashboard reads without GitHub calls, while authenticating each request", async () => {
+    const { store } = memoryGitHubCache();
+    const cachedApp = createApp({
+      createDatabase: () => ({ db, close: async () => {} }),
+      createAuth: () => auth,
+      githubFetch: fetcher,
+      githubCache: store,
+    });
+    const request = (path: string, session = cookie) =>
+      cachedApp.request(
+        `http://localhost:1337/api/v1${path}`,
+        { headers: { Cookie: session } },
+        env,
+      );
+    for (const path of [
+      "/github/connection?limit=30",
+      "/repositories?limit=30",
+      "/dashboard/overview",
+    ]) {
+      const first = await request(path);
+      expect(first.status).toBe(200);
+      expect(first.headers.get("X-GitHub-Cache")).toBe("MISS");
+      const firstBody = await first.json();
+      fetcher.mockClear();
+      const warm = await request(path);
+      expect(warm.headers.get("X-GitHub-Cache")).toBe("HIT");
+      expect(warm.headers.get("Cache-Control")).toBe("no-store");
+      expect(warm.headers.get("Server-Timing")).toContain(
+        "0 upstream requests",
+      );
+      expect(await warm.json()).toEqual(firstBody);
+      expect(fetcher).not.toHaveBeenCalled();
+      expect((await request(path, "")).status).toBe(401);
+    }
+    expect(
+      await (await request("/github/connection?limit=30", otherCookie)).json(),
+    ).toMatchObject({ data: { status: "disconnected" } });
+  });
+
+  it("shares metadata across endpoints and supports explicit live refresh", async () => {
+    const { store } = memoryGitHubCache();
+    const cachedApp = createApp({
+      createDatabase: () => ({ db, close: async () => {} }),
+      createAuth: () => auth,
+      githubFetch: fetcher,
+      githubCache: store,
+    });
+    const request = (path: string) =>
+      cachedApp.request(
+        `http://localhost:1337/api/v1${path}`,
+        { headers: { Cookie: cookie } },
+        env,
+      );
+    expect((await request("/github/connection")).status).toBe(200);
+    fetcher.mockClear();
+    expect((await request("/repositories")).status).toBe(200);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(String(fetcher.mock.calls[0][0])).toContain(
+      "/user/installations/10/repositories",
+    );
+    fetcher.mockClear();
+    mode = "revoked";
+    const refreshed = await request("/repositories?refresh=true");
+    expect(refreshed.headers.get("X-GitHub-Cache")).toBe("BYPASS");
+    expect(await refreshed.json()).toMatchObject({ data: [{ id: "2" }] });
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(await (await request("/repositories")).json()).toMatchObject({
+      data: [{ id: "2" }],
+    });
+  });
+
+  it("does not cache upstream failures or HTTP-200 reauthorization prompts", async () => {
+    const { store } = memoryGitHubCache();
+    const cachedApp = createApp({
+      createDatabase: () => ({ db, close: async () => {} }),
+      createAuth: () => auth,
+      githubFetch: fetcher,
+      githubCache: store,
+    });
+    const request = (path: string) =>
+      cachedApp.request(
+        `http://localhost:1337/api/v1${path}`,
+        { headers: { Cookie: cookie } },
+        env,
+      );
+    mode = "expired";
+    expect(await (await request("/github/connection")).json()).toMatchObject({
+      data: { status: "reauthorization_required" },
+    });
+    mode = "normal";
+    expect(await (await request("/github/connection")).json()).toMatchObject({
+      data: { status: "connected" },
+    });
+    mode = "unavailable";
+    expect((await request("/dashboard/overview")).status).toBe(502);
+    mode = "normal";
+    expect((await request("/dashboard/overview")).status).toBe(200);
+  });
+
   it("requires the Better Auth cookie on every endpoint and returns a request ID", async () => {
     for (const path of [
       "/github/connection",
@@ -660,6 +760,89 @@ describe("opaque pagination", () => {
 });
 
 describe("bounded live GitHub work", () => {
+  it("loads GitHub identity and installations concurrently", async () => {
+    let active = 0;
+    let maximum = 0;
+    const mock: typeof fetch = async (input) => {
+      active++;
+      maximum = Math.max(maximum, active);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      active--;
+      return new URL(String(input)).pathname === "/user"
+        ? json(owner)
+        : json({ total_count: 1, installations: [installation(10)] });
+    };
+    const result = await new GitHubService(
+      "test",
+      env.BETTER_AUTH_SECRET,
+      "user",
+      mock,
+    ).connection(30);
+    expect(result.data.status).toBe("connected");
+    expect(maximum).toBe(2);
+  });
+
+  it("overlaps overview searches and hydrates recent PRs concurrently in global order", async () => {
+    let activeSearches = 0;
+    let maximumSearches = 0;
+    let activePulls = 0;
+    let maximumPulls = 0;
+    const values = Array.from({ length: 7 }, (_, index) =>
+      pr(
+        1,
+        index + 1,
+        `2026-10-${String(23 - index).padStart(2, "0")}T12:00:00Z`,
+      ),
+    );
+    const mock: typeof fetch = async (input) => {
+      const url = new URL(String(input));
+      if (url.pathname === "/user/installations")
+        return json({ total_count: 1, installations: [installation(10)] });
+      if (url.pathname === "/user/installations/10/repositories")
+        return json({ total_count: 1, repositories: [repo(1)] });
+      if (url.pathname === "/search/issues") {
+        activeSearches++;
+        maximumSearches = Math.max(maximumSearches, activeSearches);
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        activeSearches--;
+        return json({
+          total_count: values.length,
+          incomplete_results: false,
+          items: values.map((item) => ({
+            ...item,
+            repository_url: "https://api.github.com/repos/owner1/repo1",
+            pull_request: { url: item.html_url },
+          })),
+        });
+      }
+      const number = Number(url.pathname.split("/").at(-1));
+      activePulls++;
+      maximumPulls = Math.max(maximumPulls, activePulls);
+      // Complete in reverse order to catch accidental completion-order sorting.
+      await new Promise((resolve) => setTimeout(resolve, 8 - number));
+      activePulls--;
+      return json(values[number - 1]);
+    };
+    const service = new GitHubService(
+      "test",
+      env.BETTER_AUTH_SECRET,
+      "user",
+      mock,
+    );
+    const result = await service.overview();
+    expect(result.data.recentPullRequests.map((item) => item.id)).toEqual([
+      "101",
+      "102",
+      "103",
+      "104",
+      "105",
+    ]);
+    expect(result.data.openPullRequestCount).toBe(7);
+    expect(maximumSearches).toBe(2);
+    expect(maximumPulls).toBe(5);
+    expect(service.client.requestCount).toBe(9);
+  });
+
   it("returns an empty filtered page with a continuation instead of scanning all repositories", async () => {
     const mock = vi.fn<typeof fetch>(async (input) => {
       const url = new URL(String(input));

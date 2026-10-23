@@ -133,13 +133,14 @@ Pass `nextCursor` unchanged and preserve filters. Cursors are encrypted and
 authenticated, user-bound, endpoint-bound, and expire after 15 minutes. Altered,
 expired or cross-user cursors return `400 INVALID_CURSOR`. Combined cursors also
 bind the current installation/repository scope: restart when access changes.
-Each request revalidates GitHub access; only request-local metadata caches exist.
+Each request validates the OpenReview session and linked GitHub account. GitHub
+access/data checks may be reused for at most 30 seconds; see the cache policy below.
 
 Filtered repository and repository-specific PR pages may be empty **with
 `hasMore: true`** when a bounded scan finds no matching items. Follow the cursor
 until `hasMore` is false; do not infer exhaustion from an empty array.
 
-These are live GitHub pages, not a snapshot: PR updates or installation changes
+These are GitHub pages with a short cache, not a stable snapshot: PR updates or installation changes
 during browsing can change page boundaries. Refresh from the first page to see
 the current order.
 
@@ -158,6 +159,50 @@ dataset. The repository browser remains paginated without the 200-repository cap
 Individual repository lookup is still bounded by the metadata-page budget.
 Supporting large combined datasets efficiently requires a future incremental
 catalog/index and background synchronization, not unbounded Worker fan-out.
+
+## Latency and diagnostics
+
+Cache misses query GitHub over the internet, even when the frontend, backend,
+and database run locally. Cold loads do not have a sub-100ms response-time guarantee.
+Connection identity/installation queries run concurrently. Overview count and
+recent-PR queries also overlap, with PR details fetched in ordered batches of at
+most five concurrent calls. Repository inventory still precedes PR queries so
+access is checked before fetching repository data.
+
+Authenticated GitHub responses include a `Server-Timing` header: `github_setup`
+measures linked-account/token setup, while `github` measures route execution and
+describes its upstream request count and cache hits. Session authentication and database cleanup
+are outside those durations. Inspect this header in browser DevTools.
+
+### Approved 30-second cache policy
+
+Successful connection/repository/PR-list/overview responses and validated GitHub
+GET results use the Workers Cache API. Entries are encrypted, capped at 1 MiB of
+plaintext, and isolated by backend origin, user ID, linked account ID, token and
+backend secret. Session authentication and linked-account/token checks still run
+on **every request**, before cache lookup. Unlinking the account or changing the
+token prevents reuse. External browser responses remain `Cache-Control: no-store`.
+
+**GitHub-side data changes and access revocations may take up to 30 seconds to
+appear.** Expiry is fixed, not sliding: reading cached metadata cannot extend its
+access lifetime in derived responses. Expired entries are never served, including
+during GitHub outages. Failures and HTTP-200 reauthorization prompts are not cached.
+Installation setup/callbacks always use live checks. Cursor-bearing API responses
+are not cached, so cursor validation still runs; upstream GETs can use the cache.
+
+- `X-GitHub-Cache: HIT|MISS|BYPASS` reports primary API response-cache status.
+- `X-GitHub-Cache-Age` reports source age in seconds on hits.
+- Send `?refresh=true` or `Cache-Control: no-cache` to bypass **both** response and
+  upstream caches and replace entries with fresh successful results. The frontend
+  Refresh action and return from installation request fresh data for each section.
+- No shared database tables, module-level private-data maps or new bindings are
+  needed. Entries may be evicted early, are local to a Cloudflare data center,
+  and do not provide request collapsing. A miss still waits for GitHub.
+- Cache failures fall back to live GitHub; they do not break successful requests.
+
+A persistent local read model plus background synchronization/webhooks is still
+needed to avoid cold-load GitHub latency. This short cache is not that read model
+and does not promise sub-100ms responses on every request.
 
 ## Errors
 

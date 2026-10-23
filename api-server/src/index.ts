@@ -10,6 +10,7 @@ import type { AppEnv } from "./types/env";
 import type { Database } from "./db";
 import { ApiError, apiErrorResponse } from "./lib/api-error";
 import { githubRoutes } from "./routes/github";
+import type { GitHubCacheStore } from "./lib/github/cache";
 
 type Dependencies = {
   createDatabase: (env: AppEnv["Bindings"]) => {
@@ -18,6 +19,7 @@ type Dependencies = {
   };
   createAuth: typeof createAuth;
   githubFetch?: typeof fetch;
+  githubCache?: GitHubCacheStore | null;
 };
 
 // Factories are injectable for tests; production always uses pg + Hyperdrive.
@@ -76,8 +78,14 @@ export function createApp(
     return cors({
       origin: config.FRONTEND_URL,
       credentials: true,
-      exposeHeaders: ["X-Request-ID", "Retry-After"],
-      allowHeaders: ["Content-Type"],
+      exposeHeaders: [
+        "X-Request-ID",
+        "Retry-After",
+        "X-GitHub-Cache",
+        "X-GitHub-Cache-Age",
+        "Server-Timing",
+      ],
+      allowHeaders: ["Content-Type", "Cache-Control"],
       allowMethods: ["GET", "POST", "OPTIONS"],
       maxAge: 600,
     })(c, next);
@@ -111,7 +119,10 @@ export function createApp(
 
   app.all("/api/auth/*", (c) => c.var.auth.handler(c.req.raw));
   app.route("/api/v1/me", me);
-  app.route("/api/v1", githubRoutes(dependencies.githubFetch));
+  app.route(
+    "/api/v1",
+    githubRoutes(dependencies.githubFetch, dependencies.githubCache),
+  );
 
   // Reserved only: nothing is verified, accepted or processed until a durable queue exists.
   app.post("/api/v1/webhooks/github", (c) =>

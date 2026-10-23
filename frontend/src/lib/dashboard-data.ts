@@ -64,6 +64,8 @@ export function createDashboardData(options: {
       }
     }
   });
+  if (new URLSearchParams(window.location.search).get("github") === "connected")
+    api.refresh();
 
   const connection = createPagedList<Installation, undefined, Connection>(
     async (_, cursor, signal) => {
@@ -225,6 +227,7 @@ export function createDashboardData(options: {
 
   function refresh() {
     installationReloaded = false;
+    api.refresh();
     return batch(() => {
       setAccessIssue(null);
       return connection.reset(undefined);

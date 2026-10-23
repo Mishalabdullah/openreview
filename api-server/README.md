@@ -334,8 +334,12 @@ OAuth or review queue workers are included.
 The read-only GitHub dashboard APIs and installation setup flow are documented in
 [docs/GITHUB_API.md](docs/GITHUB_API.md), including the additional `GITHUB_APP_SLUG`
 configuration, GitHub App permissions, separate Setup URL, frontend examples,
-pagination behavior, and bounded live-query limits. No GitHub App settings were
-changed automatically and no live repository access has been tested.
+pagination behavior, and bounded live-query limits. Successful GitHub reads now
+use an encrypted, user-/account-/token-scoped Workers cache for at most 30 seconds.
+GitHub-side access revocations can therefore take up to 30 seconds to appear;
+OpenReview session and linked-account checks still run on every request. Explicit
+Refresh bypasses the cache. Cold requests still wait for GitHub. Local authenticated
+API reads and cache hits were verified without changing GitHub App settings.
 
 Formatting uses the pinned Prettier 4 prerelease, not a globally installed v3.
 Secret files, build output, dependencies, generated Wrangler declarations,
