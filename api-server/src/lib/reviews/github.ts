@@ -130,20 +130,6 @@ export async function addReviewEyes(
   ).data.id;
 }
 
-export async function removeReviewEyes(
-  client: AppGitHub,
-  fullName: string,
-  number: number,
-  reactionId: string,
-) {
-  await client.request(
-    `${repoPath(fullName)}/issues/${number}/reactions/${encodeURIComponent(reactionId)}`,
-    z.undefined(),
-    undefined,
-    "DELETE",
-  );
-}
-
 /** Added new-side lines only: invalid model locations stay in the summary. */
 export function addedLines(patch: string): Set<number> {
   const lines = new Set<number>();
@@ -287,6 +273,16 @@ const review = z.object({
 });
 const safeText = (value: string) =>
   value.replace(/<!--/g, "").replace(/@/g, "＠");
+const severityLabel = { high: "🔴 High", medium: "🟠 Medium", low: "🟡 Low" };
+const findingBody = (finding: ReviewResult["findings"][number]) => {
+  const text = `${severityLabel[finding.severity]} · **${safeText(finding.title)}**\n\n${safeText(finding.description)}`;
+  // Only single-line fixes can use our single-line GitHub review anchor.
+  // Keep code exact, but reject fences/HTML that could escape the suggestion.
+  const fix = finding.suggestion;
+  return fix !== null && fix !== undefined && !/[\r\n]|`{3}|<!--/.test(fix)
+    ? `${text}\n\n\`\`\`suggestion\n${fix}\n\`\`\``
+    : text;
+};
 export async function publishReview(
   client: AppGitHub,
   run: { id: string; fullName: string; pullNumber: number; headSha: string },
@@ -324,14 +320,13 @@ export async function publishReview(
       path: finding.path,
       line: finding.line,
       side: "RIGHT",
-      body: safeText(
-        `**${finding.severity.toUpperCase()}: ${finding.title}**\n\n${finding.description}`,
-      ),
+      body: findingBody(finding),
     }));
   const findings = result.findings
+    .filter((finding) => !locations.get(finding.path)?.has(finding.line))
     .map(
       (finding) =>
-        `- **${safeText(finding.severity)}: ${safeText(finding.title)}** — \`${safeText(finding.path).replace(/`/g, "")}:${finding.line}\`\n  ${safeText(finding.description)}`,
+        `### ${severityLabel[finding.severity]} · ${safeText(finding.title)}\n\`${safeText(finding.path).replace(/`/g, "")}:${finding.line}\`\n\n${safeText(finding.description)}`,
     )
     .join("\n");
   return (
@@ -342,7 +337,7 @@ export async function publishReview(
         commit_id: run.headSha,
         event: "COMMENT",
         comments,
-        body: `${marker}\n## OpenReview\n\n${safeText(result.summary)}\n\n${findings || "No actionable findings in the reviewed scope."}\n\n### Coverage\n${result.limitations.map((value) => `- ${safeText(value)}`).join("\n")}\n\nReviewed commit: \`${run.headSha}\`. AI-generated suggestions; human verification is required.`,
+        body: `${marker}\n## ✅ Review complete\n\n${safeText(result.summary)}\n\n${result.findings.length ? `${result.findings.length} issue${result.findings.length === 1 ? "" : "s"} found.${comments.length ? ` See ${comments.length === 1 ? "the inline comment" : "inline comments"}.` : ""}` : "No issues found in reviewed code."}${findings ? `\n\n${findings}` : ""}\n\n<details>\n<summary>Review scope</summary>\n\n${result.limitations.map((value) => `- ${safeText(value)}`).join("\n")}\n\nCommit: \`${run.headSha.slice(0, 7)}\` · AI review. Verify fixes.\n</details>`,
       },
     )
   ).data;

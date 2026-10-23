@@ -8,8 +8,6 @@ import {
   publishReview,
   reviewInput,
   addReviewEyes,
-  removeReviewEyes,
-  type AppGitHub,
 } from "./github";
 import { generateReview } from "./model";
 
@@ -151,7 +149,6 @@ export async function processReview(
     if (updated.length !== 1) throw new ReviewFailure("REVIEW_LEASE_LOST");
   };
   let hasResult = run.result !== null;
-  let progress: { client: AppGitHub; reactionId: string } | undefined;
   try {
     // Reviews default to enabled: only a saved disable row blocks processing.
     const [repository] = await db
@@ -179,10 +176,7 @@ export async function processReview(
     // model analysis begins, so authors immediately see progress.
     let reactionNotice = false;
     try {
-      progress = {
-        client,
-        reactionId: await addReviewEyes(client, run.fullName, run.pullNumber),
-      };
+      await addReviewEyes(client, run.fullName, run.pullNumber);
     } catch {
       reactionNotice = true;
       console.warn(
@@ -227,7 +221,7 @@ export async function processReview(
       }
       if (reactionNotice)
         result.limitations.push(
-          "The 👀 progress indicator could not be shown on this pull request; the GitHub App may need the Issues write permission for reactions.",
+          "Could not add 👀. Check the app's reaction permissions.",
         );
       await update({ status: "completed", result });
       hasResult = true;
@@ -307,40 +301,6 @@ export async function processReview(
       }),
     );
     return retry ? "retry" : "done";
-  } finally {
-    if (progress) {
-      try {
-        // Reactions are shared across commits of a PR. Preserve the indicator if
-        // another commit/lease owner is still reviewing or publishing that PR.
-        const [active] = await db
-          .select({ id: reviewRun.id })
-          .from(reviewRun)
-          .where(
-            and(
-              eq(reviewRun.repositoryId, run.repositoryId),
-              eq(reviewRun.pullNumber, run.pullNumber),
-              sql`${reviewRun.leaseUntil} > now()`,
-            ),
-          )
-          .limit(1);
-        if (!active)
-          await removeReviewEyes(
-            progress.client,
-            run.fullName,
-            run.pullNumber,
-            progress.reactionId,
-          );
-      } catch {
-        // Cosmetic feedback must never fail an otherwise successful review.
-        console.warn(
-          JSON.stringify({
-            event: "review_reaction_failed",
-            runId,
-            phase: "remove",
-          }),
-        );
-      }
-    }
   }
 }
 

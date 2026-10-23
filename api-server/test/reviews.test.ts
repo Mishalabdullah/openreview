@@ -121,16 +121,28 @@ const remote = vi.fn<typeof fetch>(async (input, init) => {
             {
               type: "output_text",
               text: JSON.stringify({
-                summary: "An actionable issue was found.",
-                findings: [
-                  {
-                    path: "src/file.ts",
-                    line: mode === "invalid-line" ? 999 : 2,
-                    severity: "high",
-                    title: "Unvalidated input",
-                    description: "Validate this input before use.",
-                  },
-                ],
+                summary:
+                  mode === "no-findings"
+                    ? "Adds input checks."
+                    : "An actionable issue was found.",
+                findings:
+                  mode === "no-findings"
+                    ? []
+                    : [
+                        {
+                          path: "src/file.ts",
+                          line: mode === "invalid-line" ? 999 : 2,
+                          severity: "high",
+                          title: "Unvalidated input",
+                          description: "Validate this input before use.",
+                          suggestion:
+                            mode === "multiline-fix"
+                              ? "validate();\nunsafe();"
+                              : mode === "fenced-fix"
+                                ? "```"
+                                : "validate();",
+                        },
+                      ],
               }),
             },
           ],
@@ -218,7 +230,9 @@ const remote = vi.fn<typeof fetch>(async (input, init) => {
     const body = JSON.parse(String(init.body));
     expect(body.event).toBe("COMMENT");
     expect(body.commit_id).toBe(sha);
-    expect(body.comments.length).toBe(mode === "invalid-line" ? 0 : 1);
+    expect(body.comments.length).toBe(
+      ["invalid-line", "no-findings"].includes(mode) ? 0 : 1,
+    );
     const review = {
       id: 555,
       html_url: "https://github.com/owner/repo/pull/1#pullrequestreview-555",
@@ -418,7 +432,7 @@ describe("automatic PR reviews", () => {
     expect(await processReview(db, config, runId, remote)).toBe("done");
     expect(remote).not.toHaveBeenCalled();
   });
-  it("reacts to the opening PR description before analysis and removes eyes after publication", async () => {
+  it("adds eyes before analysis and keeps them after publication", async () => {
     const runId = await startedRun();
     expect(await processReview(db, config, runId, remote)).toBe("done");
     const calls = remote.mock.calls;
@@ -436,10 +450,16 @@ describe("automatic PR reviews", () => {
     expect(index("/repos/owner/repo/issues/1/reactions", "POST")).toBeLessThan(
       index("/v1/responses", "POST"),
     );
-    expect(
-      index("/repos/owner/repo/issues/1/reactions/777", "DELETE"),
-    ).toBeGreaterThan(index("/repos/owner/repo/pulls/1/reviews", "POST"));
-    expect(eyesActive).toBe(false);
+    expect(index("/repos/owner/repo/issues/1/reactions/777", "DELETE")).toBe(
+      -1,
+    );
+    expect(eyesActive).toBe(true);
+    expect(published[0].body).toContain("## ✅ Review complete");
+    expect(published[0].body).toContain(
+      "1 issue found. See the inline comment.",
+    );
+    expect(published[0].body).not.toContain("Unvalidated input");
+    expect(published[0].body).toContain("<summary>Review scope</summary>");
   });
   it.each(["reaction-failed", "reaction-remove-failed"])(
     "does not fail a review when progress feedback fails: %s",
@@ -451,21 +471,49 @@ describe("automatic PR reviews", () => {
         (await db.select().from(tables.reviewRun))[0].publicationStatus,
       ).toBe("published");
       if (value === "reaction-failed")
-        expect(published[0].body).toContain("progress indicator");
-      else expect(published[0].body).not.toContain("progress indicator");
+        expect(published[0].body).toContain("Could not add 👀");
+      else expect(published[0].body).not.toContain("Could not add 👀");
     },
   );
-  it("cleans up eyes when model analysis fails", async () => {
+  it("keeps eyes when model analysis fails", async () => {
     const runId = await startedRun();
     mode = "ai-failed";
     expect(await processReview(db, config, runId, remote)).toBe("retry");
-    expect(eyesActive).toBe(false);
+    expect(eyesActive).toBe(true);
     expect(
       remote.mock.calls.some(
         ([input, init]) =>
           String(input).endsWith("/reactions/777") && init?.method === "DELETE",
       ),
-    ).toBe(true);
+    ).toBe(false);
+  });
+  it.each(["normal", "multiline-fix", "fenced-fix"])(
+    "posts concise inline findings with safe suggestions: %s",
+    async (value) => {
+      const runId = await startedRun();
+      mode = value;
+      await processReview(db, config, runId, remote);
+      const call = remote.mock.calls.find(
+        ([input, init]) =>
+          new URL(String(input)).pathname.endsWith("/reviews") &&
+          init?.method === "POST",
+      );
+      const body = JSON.parse(String(call?.[1]?.body));
+      expect(body.comments[0].body).toContain(
+        "🔴 High · **Unvalidated input**",
+      );
+      expect(
+        body.comments[0].body.includes("```suggestion\nvalidate();\n```"),
+      ).toBe(value === "normal");
+    },
+  );
+  it("posts a short result when no issues are found", async () => {
+    const runId = await startedRun();
+    mode = "no-findings";
+    expect(await processReview(db, config, runId, remote)).toBe("done");
+    expect(published[0].body).toContain("No issues found in reviewed code.");
+    expect(published[0].body).not.toContain("See inline comments");
+    expect(eyesActive).toBe(true);
   });
   it("preserves eyes while another commit on the same PR is being reviewed", async () => {
     const runId = await startedRun();
@@ -576,6 +624,8 @@ describe("automatic PR reviews", () => {
     mode = "invalid-line";
     expect(await processReview(db, config, runId, remote)).toBe("done");
     expect(published[0].body).toContain("no valid added-line anchor");
+    expect(published[0].body).toContain("Unvalidated input");
+    expect(published[0].body).not.toContain("```suggestion");
   });
   it("excludes secret-file patches from model input and reports partial coverage", async () => {
     const runId = await startedRun();

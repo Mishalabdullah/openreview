@@ -199,13 +199,20 @@ Errors use the existing structured envelope. Additional codes include
   immediately see the review is underway. GitHub treats that description as an
   issue body, so this does not create a comment or react to an arbitrary
   discussion reply. GitHub reuses an existing eyes reaction from the same bot.
-  The 👀 is an **in-progress indicator only**: cleanup removes the returned bot
-  reaction when the attempt ends (the review itself remains posted), unless
-  another review lease for that PR remains active. Reactions require the
+  The bot **never removes 👀**, including on failure or retry. GitHub does not
+  support a check-mark reaction, so successful publication instead posts
+  **✅ Review complete** in the review heading. This marks review completion,
+  not approval or passing tests. Reactions require the
   GitHub App **Issues: Read & write** permission; without it the reaction is
   skipped, the review still completes, and the published review notes the
-  missing indicator. Reaction failures never fail the review itself, and
-  network failures/crashes can temporarily leave an indicator behind.
+  missing indicator. Reaction failures never fail the review itself.
+
+- Reviews use short, plain English: a one-sentence summary and inline findings.
+  Inline findings are not repeated in the summary; unanchored findings remain
+  there so they are not lost. Scope details are collapsed. Safe single-line
+  replacements use GitHub's `suggestion` blocks; multi-line fixes are omitted
+  because the review anchor covers only one added line. Suggestions need human
+  verification and are never applied automatically.
 
 - Jobs are unique per installation/repository/PR/head SHA. Redeliveries do not
   create another analysis for that commit. Changing models alone does not rerun it.
