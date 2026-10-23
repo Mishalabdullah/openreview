@@ -1,0 +1,7 @@
+BETTER_AUTH_URL=http://localhost:1337
+FRONTEND_URL=http://localhost:5173
+BETTER_AUTH_SECRET=replace-with-a-random-secret-at-least-32-characters
+GITHUB_CLIENT_ID=replace-with-local-github-app-client-id
+GITHUB_CLIENT_SECRET=replace-with-local-github-app-client-secret
+GITHUB_WEBHOOK_SECRET=replace-with-a-separate-random-webhook-secret
+DATABASE_URL=postgresql://openreview:password@localhost:5432/openreview_local

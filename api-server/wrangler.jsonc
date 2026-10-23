@@ -2,37 +2,41 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "api-server",
   "main": "src/index.ts",
-  "compatibility_date": "2026-10-23"
-  // "compatibility_flags": [
-  //   "nodejs_compat"
-  // ],
-  // "vars": {
-  //   "MY_VAR": "my-variable"
-  // },
-  // "kv_namespaces": [
-  //   {
-  //     "binding": "MY_KV_NAMESPACE",
-  //     "id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-  //   }
-  // ],
-  // "r2_buckets": [
-  //   {
-  //     "binding": "MY_BUCKET",
-  //     "bucket_name": "my-bucket"
-  //   }
-  // ],
-  // "d1_databases": [
-  //   {
-  //     "binding": "MY_DB",
-  //     "database_name": "my-database",
-  //     "database_id": ""
-  //   }
-  // ],
-  // "ai": {
-  //   "binding": "AI"
-  // },
-  // "observability": {
-  //   "enabled": true,
-  //   "head_sampling_rate": 1
-  // }
+  "compatibility_date": "2026-10-23",
+  "compatibility_flags": ["nodejs_compat"],
+  "dev": { "port": 1337 },
+  "observability": {
+    "enabled": true,
+    "traces": { "enabled": true }
+  },
+  "vars": {
+    "ENVIRONMENT": "local",
+    "BETTER_AUTH_URL": "http://localhost:1337",
+    "FRONTEND_URL": "http://localhost:5173"
+  },
+  "env": {
+    "dev": {
+      "name": "openreview-api-dev",
+      "workers_dev": false,
+      "routes": [{ "pattern": "api.dev.openreview.si", "custom_domain": true }],
+      "vars": {
+        "ENVIRONMENT": "dev",
+        "BETTER_AUTH_URL": "https://api.dev.openreview.si",
+        "FRONTEND_URL": "https://dev.openreview.si"
+      }
+      // Required before deployment (disable Hyperdrive query caching for auth):
+      // ,"hyperdrive": [{ "binding": "HYPERDRIVE", "id": "<DEV_HYPERDRIVE_ID>" }]
+    },
+    "production": {
+      "name": "openreview-api-production",
+      "workers_dev": false,
+      "routes": [{ "pattern": "api.openreview.si", "custom_domain": true }],
+      "vars": {
+        "ENVIRONMENT": "production",
+        "BETTER_AUTH_URL": "https://api.openreview.si",
+        "FRONTEND_URL": "https://openreview.si"
+      }
+      // ,"hyperdrive": [{ "binding": "HYPERDRIVE", "id": "<PRODUCTION_HYPERDRIVE_ID>" }]
+    }
+  }
 }
