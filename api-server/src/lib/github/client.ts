@@ -35,17 +35,35 @@ export class GitHubClient {
       if (value !== undefined) url.searchParams.set(key, String(value));
     let response: Response;
     try {
-      response = await this.fetcher(url.href, {
+      // Workers' native fetch requires the global receiver, not this client instance.
+      response = await this.fetcher.call(globalThis, url.href, {
         headers: {
           Authorization: `Bearer ${this.token}`,
           Accept: "application/vnd.github+json",
           "X-GitHub-Api-Version": "2026-03-10",
           "User-Agent": "OpenReview",
         },
-        redirect: "error",
+        // Workers supports manual/follow, not Node's redirect: "error" mode.
+        // Handle 3xx as upstream errors below; never forward tokens to a redirect.
+        redirect: "manual",
         signal: AbortSignal.timeout(10_000),
       });
-    } catch {
+    } catch (error) {
+      console.error(
+        JSON.stringify({
+          event: "github_network_error",
+          errorType:
+            error instanceof Error &&
+            ["TypeError", "AbortError", "TimeoutError"].includes(error.name)
+              ? error.name
+              : "Error",
+          category:
+            error instanceof Error && /redirect/i.test(error.message)
+              ? "redirect_mode"
+              : "transport",
+          // Deliberately exclude messages, request headers, URLs and provider bodies.
+        }),
+      );
       throw new ApiError(
         502,
         "GITHUB_UNAVAILABLE",
@@ -53,6 +71,12 @@ export class GitHubClient {
       );
     }
     if (!response.ok) {
+      console.error(
+        JSON.stringify({
+          event: "github_http_error",
+          upstreamStatus: response.status,
+        }),
+      );
       await response.body?.cancel();
       const retry = response.headers.get("retry-after");
       if (
@@ -106,12 +130,14 @@ export class GitHubClient {
       );
     const chunks: Uint8Array[] = [];
     let size = 0;
+    let phase = "read";
     try {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
         size += value.byteLength;
         if (size > 8 * 1024 * 1024) {
+          phase = "size";
           await reader.cancel();
           throw new Error("Response too large");
         }
@@ -123,9 +149,11 @@ export class GitHubClient {
         bytes.set(chunk, offset);
         offset += chunk.byteLength;
       }
+      phase = "decode";
       const parsed = schema.safeParse(
         JSON.parse(new TextDecoder().decode(bytes)),
       );
+      phase = "schema";
       if (!parsed.success) throw new Error("Invalid response");
       return {
         data: parsed.data,
@@ -134,6 +162,7 @@ export class GitHubClient {
         ),
       };
     } catch {
+      console.error(JSON.stringify({ event: "github_response_error", phase }));
       throw new ApiError(
         502,
         "GITHUB_UNAVAILABLE",

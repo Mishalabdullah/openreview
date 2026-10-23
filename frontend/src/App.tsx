@@ -1,6 +1,7 @@
 import { createEffect, createSignal, onMount, Show } from "solid-js";
 import Dashboard from "./Dashboard";
 import { authClient } from "./lib/auth-client";
+import { oauthErrorMessage, safeOAuthErrorCode } from "./lib/oauth-errors";
 
 function App() {
   const session = authClient.useSession();
@@ -9,10 +10,12 @@ function App() {
     pathname === "/dashboard" || pathname.startsWith("/dashboard/");
   const [signingIn, setSigningIn] = createSignal(false);
   const [signingOut, setSigningOut] = createSignal(false);
+  const [sessionInvalid, setSessionInvalid] = createSignal(false);
+  const callbackError = safeOAuthErrorCode(
+    new URLSearchParams(window.location.search).get("error"),
+  );
   const [authError, setAuthError] = createSignal(
-    new URLSearchParams(window.location.search).has("error")
-      ? "GitHub sign-in was not completed. Please try again."
-      : "",
+    oauthErrorMessage(callbackError),
   );
   const [theme, setTheme] = createSignal<"dark" | "light">("dark");
 
@@ -44,10 +47,10 @@ function App() {
       const { error } = await authClient.signIn.social({
         provider: "github",
         callbackURL: new URL("/dashboard", window.location.origin).href,
-        errorCallbackURL: new URL("/?error=oauth", window.location.origin).href,
+        errorCallbackURL: new URL("/", window.location.origin).href,
       });
       if (error) {
-        setAuthError("Unable to start GitHub sign-in. Please try again.");
+        setAuthError(oauthErrorMessage(error.code ?? "oauth_error"));
         setSigningIn(false);
       }
     } catch {
@@ -77,11 +80,16 @@ function App() {
   const needsRedirect = () =>
     !session().isPending &&
     !session().error &&
-    (isDashboard ? !session().data : !!session().data);
+    (isDashboard ? sessionInvalid() || !session().data : !!session().data);
 
   createEffect(() => {
-    if (needsRedirect())
-      window.location.replace(isDashboard ? "/" : "/dashboard");
+    if (needsRedirect()) {
+      // Preserve safe reconnect errors across the signed-in login-page redirect.
+      const destination = callbackError
+        ? `/dashboard?error=${callbackError}`
+        : "/dashboard";
+      window.location.replace(isDashboard ? "/" : destination);
+    }
   });
 
   return (
@@ -125,6 +133,12 @@ function App() {
                 onSignOut={handleSignOut}
                 signingOut={signingOut()}
                 authError={authError()}
+                onReconnect={() => void handleGitHubLogin()}
+                reconnecting={signingIn()}
+                onSessionRequired={() => {
+                  setSessionInvalid(true);
+                  window.location.replace("/");
+                }}
               />
             )}
           </Show>

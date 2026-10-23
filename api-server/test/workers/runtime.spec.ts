@@ -3,6 +3,7 @@ import app from "../../src";
 import type { Bindings } from "../../src/types/env";
 import { OpaqueTokens } from "../../src/lib/github/pagination";
 import { z } from "zod";
+import { GitHubClient } from "../../src/lib/github/client";
 
 const bindings: Bindings = {
   ENVIRONMENT: "local",
@@ -16,6 +17,30 @@ const bindings: Bindings = {
 };
 
 describe("actual Workers runtime", () => {
+  it("calls GitHub transport with the global receiver and a Workers-supported redirect mode", async () => {
+    let calls = 0;
+    const transport: typeof fetch = async function (
+      this: unknown,
+      input,
+      init,
+    ) {
+      expect(this).toBe(globalThis);
+      // Constructing a real Workers Request rejects Node-only redirect: "error".
+      const request = new Request(input, init);
+      expect(request.redirect).toBe("manual");
+      expect(request.headers.get("Authorization")).toBe("Bearer test-token");
+      calls++;
+      return new Response(JSON.stringify({ id: 1 }), {
+        headers: { "Content-Type": "application/json" },
+      });
+    };
+    const result = await new GitHubClient("test-token", transport).get(
+      "/user",
+      z.object({ id: z.number() }),
+    );
+    expect(result.data).toEqual({ id: 1 });
+    expect(calls).toBe(1);
+  });
   it("rejects anonymous GitHub API requests before making any provider/database calls", async () => {
     for (const path of [
       "/github/connection",
