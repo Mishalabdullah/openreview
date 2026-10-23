@@ -559,6 +559,12 @@ code {
   font-weight: 600;
 }
 
+.workspace-description {
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
 .workspace-switcher label {
   display: block;
   margin-top: 7px;
@@ -660,6 +666,19 @@ code {
   margin-top: 20px;
   padding: 20px 8px 0;
   border-top: 1px solid var(--line);
+  width: 100%;
+  background: transparent;
+  text-align: left;
+}
+
+.sidebar-account .sidebar-label {
+  min-width: 0;
+}
+
+.sidebar-account strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .dashboard-avatar {
@@ -685,6 +704,42 @@ code {
   margin-top: 4px;
   color: var(--muted);
   font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 280px;
+  margin-top: 21px;
+  padding: 40px 24px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  text-align: center;
+}
+
+.dashboard-empty-state svg {
+  margin-bottom: 20px;
+  color: var(--muted);
+}
+
+.dashboard-empty-state h3 {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.5;
+  letter-spacing: 0;
+}
+
+.dashboard-empty-state p {
+  max-width: 390px;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 13px;
 }
 
 .dashboard-workspace {
@@ -980,6 +1035,53 @@ code {
   margin-block: 4px 12px;
   color: var(--muted);
   font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.dashboard-sign-out {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  margin-top: 8px;
+  padding: 10px 16px;
+  background: var(--soft);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.dashboard-sign-out:hover {
+  border-color: var(--accent);
+}
+
+.auth-session-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  min-height: 100svh;
+  padding: 32px;
+  text-align: center;
+}
+
+.auth-session-state h1 {
+  font-size: 28px;
+}
+
+.auth-error {
+  margin-block: 16px;
+  color: var(--red);
+  font-size: 13px;
+}
+
+.github-login:disabled,
+.dashboard-sign-out:disabled {
+  cursor: wait;
+  opacity: 0.7;
+  transform: none;
+  box-shadow: none;
 }
 
 @media (min-width: 761px) and (max-width: 1100px) {
