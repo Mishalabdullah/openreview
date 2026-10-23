@@ -38,9 +38,9 @@ export function apiErrorMessage(code: string): string {
     REVIEW_QUEUE_UNAVAILABLE:
       "The background review queue is unavailable. Please retry later.",
     REVIEWS_NOT_ENABLED:
-      "Enable reviews for this repository first. A repository administrator can do this from its PR page.",
+      "Automatic reviews are disabled for this repository. A repository administrator can re-enable them from the Pull Requests page.",
     REVIEW_ADMIN_REQUIRED:
-      "A repository administrator must enable automatic reviews.",
+      "Only a repository administrator can change automatic review settings.",
     REVIEW_WRITE_REQUIRED:
       "Repository write access is required to request a review.",
     PR_NOT_REVIEWABLE: "Only open, non-draft PRs can be reviewed.",

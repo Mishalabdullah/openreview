@@ -11,6 +11,9 @@ import {
 import { user } from "./auth-schema";
 import type { ReviewResult } from "../lib/reviews/model";
 
+// Opt-out model: reviews are enabled for every repository by default, and a
+// saved row records an explicit administrator choice (usually a disable).
+// `enabledBy` tracks the administrator who last changed the setting.
 export const reviewRepository = pgTable("review_repository", {
   repositoryId: text("repository_id").primaryKey(),
   installationId: text("installation_id").notNull(),

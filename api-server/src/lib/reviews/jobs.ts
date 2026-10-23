@@ -1,14 +1,4 @@
-import {
-  and,
-  eq,
-  inArray,
-  isNull,
-  isNotNull,
-  lt,
-  or,
-  sql,
-  desc,
-} from "drizzle-orm";
+import { and, eq, inArray, isNull, lt, or, sql, desc } from "drizzle-orm";
 import type { Database } from "../../db";
 import { reviewRepository, reviewRun } from "../../db/schema";
 import type { Config } from "../../config/env";
@@ -163,6 +153,7 @@ export async function processReview(
   let hasResult = run.result !== null;
   let progress: { client: AppGitHub; reactionId: string } | undefined;
   try {
+    // Reviews default to enabled: only a saved disable row blocks processing.
     const [repository] = await db
       .select()
       .from(reviewRepository)
@@ -170,12 +161,11 @@ export async function processReview(
         and(
           eq(reviewRepository.repositoryId, run.repositoryId),
           eq(reviewRepository.installationId, run.installationId),
-          eq(reviewRepository.enabled, true),
-          isNotNull(reviewRepository.enabledBy),
+          eq(reviewRepository.enabled, false),
         ),
       )
       .limit(1);
-    if (!repository) throw new ReviewFailure("REPOSITORY_NOT_ENABLED");
+    if (repository) throw new ReviewFailure("REPOSITORY_NOT_ENABLED");
     const client = await installationClient(
       settings,
       run.installationId,
@@ -185,20 +175,16 @@ export async function processReview(
       status: run.result ? "completed" : "reviewing",
       errorCode: null,
     });
-    // Live permissions, current SHA and diff checks run even when retrying publication.
-    const context = await reviewInput(
-      client,
-      run.fullName,
-      run.pullNumber,
-      run.headSha,
-      run.repositoryId,
-    );
+    // 👀 first: mark the PR as under review before any diff fetching or
+    // model analysis begins, so authors immediately see progress.
+    let reactionNotice = false;
     try {
       progress = {
         client,
         reactionId: await addReviewEyes(client, run.fullName, run.pullNumber),
       };
     } catch {
+      reactionNotice = true;
       console.warn(
         JSON.stringify({
           event: "review_reaction_failed",
@@ -207,6 +193,14 @@ export async function processReview(
         }),
       );
     }
+    // Live permissions, current SHA and diff checks run even when retrying publication.
+    const context = await reviewInput(
+      client,
+      run.fullName,
+      run.pullNumber,
+      run.headSha,
+      run.repositoryId,
+    );
     const result =
       run.result ??
       (await generateReview(
@@ -231,23 +225,26 @@ export async function processReview(
           "Some findings have no valid added-line anchor and appear only in the summary.",
         );
       }
+      if (reactionNotice)
+        result.limitations.push(
+          "The 👀 progress indicator could not be shown on this pull request; the GitHub App may need the Issues write permission for reactions.",
+        );
       await update({ status: "completed", result });
       hasResult = true;
     }
     // A repository may be disabled while analysis is in progress.
-    const [stillEnabled] = await db
+    const [nowDisabled] = await db
       .select()
       .from(reviewRepository)
       .where(
         and(
           eq(reviewRepository.repositoryId, run.repositoryId),
           eq(reviewRepository.installationId, run.installationId),
-          eq(reviewRepository.enabled, true),
-          isNotNull(reviewRepository.enabledBy),
+          eq(reviewRepository.enabled, false),
         ),
       )
       .limit(1);
-    if (!stillEnabled) throw new ReviewFailure("REPOSITORY_NOT_ENABLED");
+    if (nowDisabled) throw new ReviewFailure("REPOSITORY_NOT_ENABLED");
     const published = await publishReview(
       client,
       run,

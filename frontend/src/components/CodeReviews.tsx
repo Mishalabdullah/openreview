@@ -74,8 +74,9 @@ export function RepositoryReviewSettings(props: { repositoryId: string }) {
       <div>
         <strong>Automatic code reviews</strong>
         <p>
-          When enabled, non-draft PR changes are sent to OpenAI. Informational
-          reviews are saved here and posted by the GitHub App.
+          Non-draft pull requests are reviewed automatically for every
+          accessible repository. Informational reviews are saved here and posted
+          by the GitHub App. Disable to stop reviews for this repository.
         </p>
       </div>
       <Show when={settings()}>
@@ -102,7 +103,9 @@ export function RepositoryReviewSettings(props: { repositoryId: string }) {
               </button>
             </Show>
             <Show when={!value().canAdmin}>
-              <small>A repository administrator must enable reviews.</small>
+              <small>
+                A repository administrator can disable or re-enable reviews.
+              </small>
             </Show>
           </>
         )}
@@ -127,7 +130,6 @@ export function CodeReview(props: { pull: PullRequest }) {
     enabled: boolean;
     canAdmin: boolean;
   } | null>(null);
-  const [settingsLoading, setSettingsLoading] = createSignal(false);
   const request = createApiClient();
   createEffect(() => setRun(props.pull.appReview ?? null));
   createEffect(() => {
@@ -135,7 +137,6 @@ export function CodeReview(props: { pull: PullRequest }) {
     revision();
     const repositoryId = props.pull.repository.id;
     const controller = new AbortController();
-    setSettingsLoading(true);
     void request<{
       data: { available: boolean; enabled: boolean; canAdmin: boolean };
     }>(
@@ -147,9 +148,6 @@ export function CodeReview(props: { pull: PullRequest }) {
       })
       .catch(() => {
         if (!controller.signal.aborted) setSettings(null);
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setSettingsLoading(false);
       });
     onCleanup(() => controller.abort());
   });
@@ -241,8 +239,8 @@ export function CodeReview(props: { pull: PullRequest }) {
           when={run()}
           fallback={
             <p>
-              No saved review for this PR yet. Enable reviews for its repository
-              before requesting one.
+              No saved review for this PR yet. Request one below, or open or
+              update a non-draft PR to trigger a review automatically.
             </p>
           }
         >
@@ -299,6 +297,12 @@ export function CodeReview(props: { pull: PullRequest }) {
             </>
           )}
         </Show>
+        <Show when={settings()?.enabled === false}>
+          <p role="status">
+            Automatic reviews are disabled for this repository. A repository
+            administrator can re-enable them.
+          </p>
+        </Show>
         <div class="code-review-actions">
           <button
             class="dashboard-control"
@@ -311,6 +315,7 @@ export function CodeReview(props: { pull: PullRequest }) {
               class="dashboard-control"
               disabled={
                 busy() ||
+                settings()?.enabled === false ||
                 run()?.status === "queued" ||
                 run()?.status === "reviewing"
               }

@@ -415,7 +415,7 @@ export function PullRequestBrowser(props: { model: DashboardData } & Actions) {
         when={model.repositoryId()}
         fallback={
           <p class="section-message">
-            Select a repository to configure automatic reviews.
+            Select a repository to manage its automatic reviews.
           </p>
         }
       >

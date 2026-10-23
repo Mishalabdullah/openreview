@@ -293,13 +293,12 @@ async function webhook(
     env,
   );
 }
-async function enabledRun() {
-  expect(
-    (await api("/repositories/1/reviews/settings", { enabled: true })).status,
-  ).toBe(200);
+async function startedRun() {
   const response = await webhook();
   expect(response.status).toBe(202);
-  return ((await response.json()) as { runId: string }).runId;
+  const body = (await response.json()) as { runId: string; ignored: boolean };
+  expect(body.ignored).toBe(false);
+  return body.runId;
 }
 
 beforeAll(async () => {
@@ -352,26 +351,50 @@ beforeEach(async () => {
 afterAll(() => storage.close());
 
 describe("automatic PR reviews", () => {
-  it("requires admin opt-in, valid signatures and an authenticated dashboard session", async () => {
+  it("reviews repositories by default while keeping signature and session checks", async () => {
     expect((await webhook(payload(), undefined, false)).status).toBe(401);
     expect(queue.send).not.toHaveBeenCalled();
-    expect(await (await webhook()).json()).toMatchObject({
-      ignored: true,
-      runId: null,
+    const response = await webhook();
+    expect(response.status).toBe(202);
+    expect(await response.json()).toMatchObject({ ignored: false });
+    expect(await db.select().from(tables.reviewRun)).toHaveLength(1);
+    expect(queue.send).toHaveBeenCalledTimes(1);
+    expect(
+      await (await api("/repositories/1/reviews/settings")).json(),
+    ).toMatchObject({
+      data: { enabled: true, available: true, canAdmin: true },
     });
     expect(
       (await api("/repositories/1/reviews/settings", undefined, "")).status,
     ).toBe(401);
     admin = false;
     expect(
-      (await api("/repositories/1/reviews/settings", { enabled: true })).status,
+      (await api("/repositories/1/reviews/settings", { enabled: false }))
+        .status,
     ).toBe(403);
     expect(
       (await api("/repositories/1/pull-requests/1/reviews", {})).status,
     ).toBe(403);
   });
+  it("stops automatic reviews when an administrator disables a repository", async () => {
+    expect(
+      (await api("/repositories/1/reviews/settings", { enabled: false }))
+        .status,
+    ).toBe(200);
+    expect(
+      await (await api("/repositories/1/reviews/settings")).json(),
+    ).toMatchObject({ data: { enabled: false, available: true } });
+    expect(await (await webhook()).json()).toMatchObject({
+      ignored: true,
+      runId: null,
+    });
+    expect(await db.select().from(tables.reviewRun)).toHaveLength(0);
+    expect(
+      (await api("/repositories/1/pull-requests/1/reviews", {})).status,
+    ).toBe(409);
+  });
   it("stores jobs, generates structured findings and publishes a bot COMMENT review", async () => {
-    const runId = await enabledRun();
+    const runId = await startedRun();
     expect(await processReview(db, config, runId, remote)).toBe("done");
     const [run] = await db
       .select()
@@ -396,7 +419,7 @@ describe("automatic PR reviews", () => {
     expect(remote).not.toHaveBeenCalled();
   });
   it("reacts to the opening PR description before analysis and removes eyes after publication", async () => {
-    const runId = await enabledRun();
+    const runId = await startedRun();
     expect(await processReview(db, config, runId, remote)).toBe("done");
     const calls = remote.mock.calls;
     const index = (path: string, method: string) =>
@@ -408,6 +431,9 @@ describe("automatic PR reviews", () => {
       index("/repos/owner/repo/issues/1/reactions", "POST"),
     ).toBeGreaterThan(-1);
     expect(index("/repos/owner/repo/issues/1/reactions", "POST")).toBeLessThan(
+      index("/repos/owner/repo/pulls/1/files", "GET"),
+    );
+    expect(index("/repos/owner/repo/issues/1/reactions", "POST")).toBeLessThan(
       index("/v1/responses", "POST"),
     );
     expect(
@@ -418,16 +444,19 @@ describe("automatic PR reviews", () => {
   it.each(["reaction-failed", "reaction-remove-failed"])(
     "does not fail a review when progress feedback fails: %s",
     async (value) => {
-      const runId = await enabledRun();
+      const runId = await startedRun();
       mode = value;
       expect(await processReview(db, config, runId, remote)).toBe("done");
       expect(
         (await db.select().from(tables.reviewRun))[0].publicationStatus,
       ).toBe("published");
+      if (value === "reaction-failed")
+        expect(published[0].body).toContain("progress indicator");
+      else expect(published[0].body).not.toContain("progress indicator");
     },
   );
   it("cleans up eyes when model analysis fails", async () => {
-    const runId = await enabledRun();
+    const runId = await startedRun();
     mode = "ai-failed";
     expect(await processReview(db, config, runId, remote)).toBe("retry");
     expect(eyesActive).toBe(false);
@@ -439,21 +468,19 @@ describe("automatic PR reviews", () => {
     ).toBe(true);
   });
   it("preserves eyes while another commit on the same PR is being reviewed", async () => {
-    const runId = await enabledRun();
-    await db
-      .insert(tables.reviewRun)
-      .values({
-        id: crypto.randomUUID(),
-        repositoryId: "1",
-        installationId: "10",
-        fullName: "owner/repo",
-        pullNumber: 1,
-        headSha: "b".repeat(40),
-        model: config.OPENAI_REVIEW_MODEL,
-        status: "reviewing",
-        leaseToken: "other-worker",
-        leaseUntil: new Date(Date.now() + 60_000),
-      });
+    const runId = await startedRun();
+    await db.insert(tables.reviewRun).values({
+      id: crypto.randomUUID(),
+      repositoryId: "1",
+      installationId: "10",
+      fullName: "owner/repo",
+      pullNumber: 1,
+      headSha: "b".repeat(40),
+      model: config.OPENAI_REVIEW_MODEL,
+      status: "reviewing",
+      leaseToken: "other-worker",
+      leaseUntil: new Date(Date.now() + 60_000),
+    });
     expect(await processReview(db, config, runId, remote)).toBe("done");
     expect(eyesActive).toBe(true);
     expect(
@@ -461,7 +488,6 @@ describe("automatic PR reviews", () => {
     ).toBe(false);
   });
   it("deduplicates delivery IDs and commits, and detects reused IDs with a changed payload", async () => {
-    await api("/repositories/1/reviews/settings", { enabled: true });
     const delivery = crypto.randomUUID();
     const first = (await (await webhook(payload(), delivery)).json()) as {
       runId: string;
@@ -475,14 +501,13 @@ describe("automatic PR reviews", () => {
     ).toBe(409);
   });
   it("recovers durable jobs after a queue-send failure", async () => {
-    await api("/repositories/1/reviews/settings", { enabled: true });
     queue.send.mockRejectedValueOnce(new Error("queue unavailable"));
     expect((await webhook()).status).toBe(503);
     expect(await dispatchPending(db, queue)).toBe(1);
     expect(queue.send).toHaveBeenCalledTimes(2);
   });
   it("overlays database-fresh review progress on cached GitHub PRs", async () => {
-    const runId = await enabledRun();
+    const runId = await startedRun();
     await processReview(db, config, runId, remote);
     const { store } = memoryGitHubCache();
     const cached = createApp({
@@ -520,7 +545,7 @@ describe("automatic PR reviews", () => {
     expect(remote).not.toHaveBeenCalled();
   });
   it("reconciles an ambiguous GitHub POST without generating or posting twice", async () => {
-    const runId = await enabledRun();
+    const runId = await startedRun();
     mode = "ambiguous-post";
     expect(await processReview(db, config, runId, remote)).toBe("retry");
     mode = "normal";
@@ -535,7 +560,7 @@ describe("automatic PR reviews", () => {
   it.each(["superseded", "draft", "revoked", "suspended"])(
     "does not call OpenAI or publish for %s PR access/state",
     async (value) => {
-      const runId = await enabledRun();
+      const runId = await startedRun();
       mode = value;
       expect(await processReview(db, config, runId, remote)).toBe("done");
       expect(published).toHaveLength(0);
@@ -547,13 +572,13 @@ describe("automatic PR reviews", () => {
     },
   );
   it("keeps invalid inline locations in the summary only", async () => {
-    const runId = await enabledRun();
+    const runId = await startedRun();
     mode = "invalid-line";
     expect(await processReview(db, config, runId, remote)).toBe("done");
     expect(published[0].body).toContain("no valid added-line anchor");
   });
   it("excludes secret-file patches from model input and reports partial coverage", async () => {
-    const runId = await enabledRun();
+    const runId = await startedRun();
     mode = "secret-file";
     expect(await processReview(db, config, runId, remote)).toBe("done");
     expect(published[0].body).toContain(
@@ -561,7 +586,7 @@ describe("automatic PR reviews", () => {
     );
   });
   it("does not publish a result if a newer commit arrives during model analysis", async () => {
-    const runId = await enabledRun();
+    const runId = await startedRun();
     mode = "push-during-ai";
     expect(await processReview(db, config, runId, remote)).toBe("done");
     expect(published).toHaveLength(0);
@@ -571,7 +596,7 @@ describe("automatic PR reviews", () => {
     });
   });
   it("does not publish after losing its database lease during analysis", async () => {
-    const runId = await enabledRun();
+    const runId = await startedRun();
     mode = "lease-lost";
     expect(await processReview(db, config, runId, remote)).toBe("retry");
     expect(published).toHaveLength(0);
@@ -580,14 +605,13 @@ describe("automatic PR reviews", () => {
     );
   });
   it("ignores draft webhook deliveries without creating a job", async () => {
-    await api("/repositories/1/reviews/settings", { enabled: true });
     mode = "draft";
     expect(await (await webhook()).json()).toMatchObject({ ignored: true });
     expect(await db.select().from(tables.reviewRun)).toHaveLength(0);
     expect(queue.send).not.toHaveBeenCalled();
   });
   it("revives a skipped same-commit job when a draft becomes ready for review", async () => {
-    const runId = await enabledRun();
+    const runId = await startedRun();
     mode = "draft";
     expect(await processReview(db, config, runId, remote)).toBe("done");
     mode = "normal";
@@ -601,15 +625,18 @@ describe("automatic PR reviews", () => {
     expect(await db.select().from(tables.reviewRun)).toHaveLength(1);
   });
   it("retries transient OpenAI failures without posting a fabricated review", async () => {
-    const runId = await enabledRun();
+    const runId = await startedRun();
     mode = "ai-failed";
     expect(await processReview(db, config, runId, remote)).toBe("retry");
     expect(published).toHaveLength(0);
     mode = "normal";
     expect(await processReview(db, config, runId, remote)).toBe("done");
   });
-  it("disables opted-in repositories on signed installation suspension events", async () => {
-    const runId = await enabledRun();
+  it("re-disables administrator-managed repositories on signed installation suspension events", async () => {
+    const runId = await startedRun();
+    // Disable, then re-enable: the repository now carries a saved settings row.
+    await api("/repositories/1/reviews/settings", { enabled: false });
+    await api("/repositories/1/reviews/settings", { enabled: true });
     expect(
       (
         await webhook(
@@ -622,9 +649,35 @@ describe("automatic PR reviews", () => {
     ).toBe(200);
     expect(await processReview(db, config, runId, remote)).toBe("done");
     expect(published).toHaveLength(0);
+    expect((await db.select().from(tables.reviewRepository))[0].enabled).toBe(
+      false,
+    );
+  });
+  it("marks removed repositories disabled even without a saved settings row", async () => {
+    expect(
+      (
+        await webhook(
+          {
+            action: "removed",
+            installation: { id: 10 },
+            repositories_removed: [{ id: 1, full_name: "owner/repo" }],
+          },
+          undefined,
+          true,
+          "installation_repositories",
+        )
+      ).status,
+    ).toBe(200);
+    expect(await (await webhook()).json()).toMatchObject({
+      ignored: true,
+      runId: null,
+    });
+    expect((await db.select().from(tables.reviewRepository))[0].enabled).toBe(
+      false,
+    );
   });
   it("respects active leases and finalizes exhausted crashed jobs", async () => {
-    const runId = await enabledRun();
+    const runId = await startedRun();
     await db
       .update(tables.reviewRun)
       .set({ leaseUntil: new Date(Date.now() + 60_000) })

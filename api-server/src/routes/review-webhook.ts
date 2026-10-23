@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { and, eq, isNotNull } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import type { AppEnv } from "../types/env";
 import { reviewDelivery, reviewRepository, reviewRun } from "../db/schema";
 import { ApiError } from "../lib/api-error";
@@ -113,13 +113,16 @@ export function reviewWebhook(
     } catch {
       throw new ApiError(400, "INVALID_WEBHOOK", "Invalid webhook JSON.");
     }
-    // Revocations disable opt-ins. Consumers also check live installation/repo access.
+    // Reviews are on by default; saved rows record explicit disables. Consumers
+    // also re-check live installation/repository access before analyzing.
     if (kind === "installation" || kind === "installation_repositories") {
       const parsed = z
         .object({
           action: z.string(),
           installation: z.object({ id }),
-          repositories_removed: z.array(z.object({ id })).optional(),
+          repositories_removed: z
+            .array(z.object({ id, full_name: z.string().optional() }))
+            .optional(),
         })
         .safeParse(payload);
       if (!parsed.success)
@@ -135,16 +138,37 @@ export function reviewWebhook(
           .where(
             eq(reviewRepository.installationId, parsed.data.installation.id),
           );
-      for (const repo of parsed.data.repositories_removed ?? [])
-        await c.var.db
-          .update(reviewRepository)
-          .set({ enabled: false, updatedAt: new Date() })
-          .where(
-            and(
-              eq(reviewRepository.repositoryId, repo.id),
-              eq(reviewRepository.installationId, parsed.data.installation.id),
-            ),
-          );
+      for (const repo of parsed.data.repositories_removed ?? []) {
+        if (repo.full_name) {
+          // Repositories have no row until they are explicitly toggled, so
+          // removals must create one to override the enabled-by-default policy.
+          await c.var.db
+            .insert(reviewRepository)
+            .values({
+              repositoryId: repo.id,
+              installationId: parsed.data.installation.id,
+              fullName: repo.full_name,
+              enabled: false,
+              updatedAt: new Date(),
+            })
+            .onConflictDoUpdate({
+              target: reviewRepository.repositoryId,
+              set: { enabled: false, updatedAt: new Date() },
+            });
+        } else
+          await c.var.db
+            .update(reviewRepository)
+            .set({ enabled: false, updatedAt: new Date() })
+            .where(
+              and(
+                eq(reviewRepository.repositoryId, repo.id),
+                eq(
+                  reviewRepository.installationId,
+                  parsed.data.installation.id,
+                ),
+              ),
+            );
+      }
       return c.json({ accepted: true });
     }
     if (kind !== "pull_request")
@@ -182,20 +206,20 @@ export function reviewWebhook(
           );
         return previous.runId;
       }
-      const [enabled] = await tx
+      // Enabled by default: only a saved disable row suppresses the run.
+      const [disabled] = await tx
         .select()
         .from(reviewRepository)
         .where(
           and(
             eq(reviewRepository.repositoryId, value.repository.id),
             eq(reviewRepository.installationId, value.installation.id),
-            eq(reviewRepository.enabled, true),
-            isNotNull(reviewRepository.enabledBy),
+            eq(reviewRepository.enabled, false),
           ),
         )
         .limit(1);
       let runId: string | null = null;
-      if (enabled) {
+      if (!disabled) {
         await tx
           .insert(reviewRun)
           .values({

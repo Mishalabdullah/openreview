@@ -1,7 +1,7 @@
 import type { Hono, Context } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { z } from "zod";
-import { and, eq, inArray, isNotNull, desc, sql, or } from "drizzle-orm";
+import { and, eq, inArray, desc, sql, or } from "drizzle-orm";
 import type { AppEnv } from "../types/env";
 import { ApiError, apiErrorResponse, notFound } from "../lib/api-error";
 import { hasReviewCredentials, reviewConfig } from "../lib/reviews/config";
@@ -18,14 +18,6 @@ async function accessible(c: Context<AppEnv>) {
 export function registerReviewRoutes(routes: Hono<AppEnv>) {
   routes.get("/repositories/:repositoryId/reviews/settings", async (c) => {
     const repo = await accessible(c);
-    if (!hasReviewCredentials(c.var.config))
-      return c.json({
-        data: {
-          enabled: false,
-          available: false,
-          canAdmin: repo.permissions?.admin === true,
-        },
-      });
     const [settings] = await c.var.db
       .select()
       .from(reviewRepository)
@@ -36,10 +28,11 @@ export function registerReviewRoutes(routes: Hono<AppEnv>) {
         ),
       )
       .limit(1);
+    // Reviews are on by default; a saved row records an explicit choice.
     return c.json({
       data: {
-        enabled: Boolean(settings?.enabled && settings.enabledBy),
-        available: true,
+        enabled: settings?.enabled ?? true,
+        available: hasReviewCredentials(c.var.config),
         canAdmin: repo.permissions?.admin === true,
       },
     });
@@ -64,7 +57,7 @@ export function registerReviewRoutes(routes: Hono<AppEnv>) {
         throw new ApiError(
           403,
           "REVIEW_ADMIN_REQUIRED",
-          "A repository administrator must enable automatic reviews.",
+          "A repository administrator must change automatic review settings.",
         );
       const body = z
         .object({ enabled: z.boolean() })
@@ -149,23 +142,23 @@ export function registerReviewRoutes(routes: Hono<AppEnv>) {
         .positive()
         .safeParse(c.req.param("number"));
       if (!number.success) throw notFound();
-      const [enabled] = await c.var.db
+      // Enabled by default: only a saved disable row blocks manual requests.
+      const [disabled] = await c.var.db
         .select()
         .from(reviewRepository)
         .where(
           and(
             eq(reviewRepository.repositoryId, repo.id),
             eq(reviewRepository.installationId, repo.installationId),
-            eq(reviewRepository.enabled, true),
-            isNotNull(reviewRepository.enabledBy),
+            eq(reviewRepository.enabled, false),
           ),
         )
         .limit(1);
-      if (!enabled)
+      if (disabled)
         throw new ApiError(
           409,
           "REVIEWS_NOT_ENABLED",
-          "Enable reviews for this repository first.",
+          "Automatic reviews are disabled for this repository.",
         );
       const pr = await c.var.github.pull(repo, number.data);
       if (pr.state !== "open" || pr.draft || !pr.head.sha)

@@ -213,7 +213,7 @@ checks and Better Auth CSRF protection remain enabled. CORS never uses `*`.
 - `GET /api/v1/repositories/:repositoryId/pull-requests/:number/files` — paginated files
 - `GET /api/v1/github/install` and `/install/callback` — user/browser-bound installation flow
 - `POST /api/v1/webhooks/github` — signature-verified review ingestion; requires review setup
-- `GET|POST /api/v1/repositories/:repositoryId/reviews/settings` — admin opt-in
+- `GET|POST /api/v1/repositories/:repositoryId/reviews/settings` — per-repository review switch (admin); default on
 - `GET|POST /api/v1/repositories/:repositoryId/pull-requests/:number/reviews` — history/request/retry
 
 The reusable `requireAuth` middleware validates through Better Auth, attaches
@@ -329,7 +329,9 @@ and transfer rules until durable workspace installation linking is implemented.
 Code reviews now have signature-verified webhook ingestion, PostgreSQL-backed
 deduplication/jobs, a Cloudflare Queue consumer, recovery dispatch, installation
 tokens, bounded OpenAI analysis, GitHub COMMENT reviews, and dashboard results.
-Automatic reviews require administrator opt-in per repository, not a global enable flag.
+Automatic reviews run by default for every installed repository once
+credentials, database and queue are configured; administrators can disable them
+per repository, and there is no global enable flag.
 See [docs/CODE_REVIEWS.md](docs/CODE_REVIEWS.md) before enabling deliveries. The new
 migration has been generated, not applied; queues have not been provisioned or
 deployed. Persistent repository synchronization and GitLab OAuth remain deferred.

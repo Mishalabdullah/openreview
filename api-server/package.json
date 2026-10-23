@@ -4,7 +4,7 @@
   "scripts": {
     "format": "prettier --write . --cache-location .wrangler/prettier/cache.json",
     "format:check": "prettier --check . --cache-location .wrangler/prettier/cache.json",
-    "dev": "wrangler dev --port 1337",
+    "dev": "wrangler dev --port 1337 --test-scheduled",
     "deploy": "wrangler deploy --minify",
     "deploy:dev": "wrangler deploy --env dev --minify",
     "deploy:prod": "wrangler deploy --env production --minify",
