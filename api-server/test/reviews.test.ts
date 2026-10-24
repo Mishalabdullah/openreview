@@ -743,6 +743,89 @@ describe("automatic PR reviews", () => {
 });
 
 describe("review safety boundaries", () => {
+  it("logs safe OpenAI diagnostics without echoing upstream secrets or PR content", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      await expect(
+        generateReview(
+          "secret-key",
+          "model",
+          { private: "PR content" },
+          async () =>
+            new Response(
+              JSON.stringify({
+                error: {
+                  code: "invalid_api_key",
+                  type: "invalid_request_error",
+                  param: "model",
+                  message: "secret-key and PR content must not appear in logs",
+                },
+              }),
+              { status: 401, headers: { "x-request-id": "req_test123" } },
+            ),
+        ),
+      ).rejects.toMatchObject({
+        code: "OPENAI_REQUEST_FAILED",
+        retryable: false,
+      });
+      expect(JSON.parse(String(log.mock.calls[0][0]))).toEqual({
+        event: "review_openai_error",
+        status: 401,
+        code: "invalid_api_key",
+        type: "invalid_request_error",
+        param: "model",
+        upstreamRequestId: "req_test123",
+      });
+      expect(JSON.stringify(log.mock.calls)).not.toContain("secret-key");
+      expect(JSON.stringify(log.mock.calls)).not.toContain("PR content");
+    } finally {
+      log.mockRestore();
+    }
+  });
+  it.each(["html", "oversized", "untrusted-fields"])(
+    "preserves HTTP error behavior for %s OpenAI errors",
+    async (mode) => {
+      const log = vi.spyOn(console, "error").mockImplementation(() => {});
+      try {
+        const body =
+          mode === "html"
+            ? "<html>error</html>"
+            : mode === "oversized"
+              ? "x".repeat(20_000)
+              : JSON.stringify({
+                  error: {
+                    code: "secret-key",
+                    type: "PR content",
+                    param: "secret-key",
+                    message: "secret-key",
+                  },
+                });
+        await expect(
+          generateReview(
+            "secret-key",
+            "model",
+            {},
+            async () =>
+              new Response(body, {
+                status: 503,
+                headers: { "x-request-id": "secret-key" },
+              }),
+          ),
+        ).rejects.toMatchObject({
+          code: "OPENAI_REQUEST_FAILED",
+          retryable: true,
+        });
+        expect(JSON.parse(String(log.mock.calls[0][0]))).toEqual({
+          event: "review_openai_error",
+          status: 503,
+          code: "unknown",
+          type: "unknown",
+        });
+      } finally {
+        log.mockRestore();
+      }
+    },
+  );
   it("detects credential readiness without a global enable switch", () => {
     expect(hasReviewCredentials(config)).toBe(true);
     expect(reviewConfig(config).apiKey).toBe("test-openai-key");

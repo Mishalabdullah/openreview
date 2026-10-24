@@ -39,6 +39,15 @@ precedence. The model must be available to your OpenAI API project and support
 Responses API structured outputs. Enable API billing and configure a project
 spending limit. A ChatGPT subscription does not supply API credits.
 
+For `OPENAI_REQUEST_FAILED`, inspect the paired `review_openai_error` log. It
+records the HTTP status, allowlisted upstream code/type/parameter, and a validated
+upstream request ID—never the raw error message, API key, or repository content.
+For example, `401 / invalid_api_key` means fix the deployed key;
+`404 / model_not_found` means check model/project access; `400 / invalid_json_schema`
+means fix the request schema. Updating `API_SECRETS_JSON` in GitHub requires a new
+deployment before the Worker uses the new value. Then retry the failed review
+from the dashboard; non-retryable failures do not resume automatically.
+
 The App ID and downloaded private key are **not** the OAuth client ID/secret.
 PKCS1 RSA and PKCS8 private keys are normalized before signing the GitHub App JWT.
 Background reviews use short-lived **installation access tokens**, not a user's

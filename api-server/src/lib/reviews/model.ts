@@ -129,7 +129,71 @@ export async function generateReview(
     throw new ReviewFailure("OPENAI_UNAVAILABLE", true);
   }
   if (!response.ok) {
-    await response.body?.cancel();
+    let upstream: unknown;
+    try {
+      upstream = await boundedJson(response, 16_384);
+    } catch {
+      // Preserve the original HTTP failure even for malformed/oversized errors.
+    }
+    const details = z
+      .object({
+        error: z.object({
+          code: z.unknown().optional(),
+          type: z.unknown().optional(),
+          param: z.unknown().optional(),
+        }),
+      })
+      .safeParse(upstream);
+    const allowedCode = z
+      .enum([
+        "invalid_api_key",
+        "invalid_json_schema",
+        "model_not_found",
+        "insufficient_quota",
+        "unsupported_parameter",
+        "unsupported_value",
+        "invalid_value",
+        "context_length_exceeded",
+        "billing_hard_limit_reached",
+        "account_deactivated",
+        "permission_denied",
+        "rate_limit_exceeded",
+      ])
+      .safeParse(details.success ? details.data.error.code : undefined);
+    const allowedType = z
+      .enum([
+        "invalid_request_error",
+        "authentication_error",
+        "permission_error",
+        "rate_limit_error",
+        "server_error",
+        "insufficient_quota",
+      ])
+      .safeParse(details.success ? details.data.error.type : undefined);
+    const allowedParam = z
+      .enum([
+        "model",
+        "input",
+        "max_output_tokens",
+        "text.format",
+        "text.format.schema",
+      ])
+      .safeParse(details.success ? details.data.error.param : undefined);
+    const requestId = response.headers.get("x-request-id");
+    // Never log error.message: providers may echo API keys or repository input.
+    console.error(
+      JSON.stringify({
+        event: "review_openai_error",
+        status: response.status,
+        code: allowedCode.success ? allowedCode.data : "unknown",
+        type: allowedType.success ? allowedType.data : "unknown",
+        param: allowedParam.success ? allowedParam.data : undefined,
+        upstreamRequestId:
+          requestId && /^req_[a-zA-Z0-9_-]{1,100}$/.test(requestId)
+            ? requestId
+            : undefined,
+      }),
+    );
     throw new ReviewFailure(
       response.status === 429 ? "OPENAI_RATE_LIMITED" : "OPENAI_REQUEST_FAILED",
       response.status === 429 || response.status >= 500,
