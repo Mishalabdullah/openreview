@@ -41,6 +41,20 @@ They use **GitHub App user access tokens**, so access is the intersection of use
 access and app installation/repository selection. A selected GitHub repository
 does not automatically grant OpenReview workspace permissions.
 
+The dashboard includes owned repositories and repositories the signed-in GitHub
+account can access as a collaborator or organization member; another owner name
+does not imply another user's credentials are being used. All repository reads
+still require access through that user's GitHub token and app installation.
+
+Settings also offers **Install in another account or organization** to already
+connected users. It uses the same signed installation flow and GitHub's account
+chooser; GitHub enforces installation rights and organization approval policies.
+No additional OAuth scopes or organization directory are requested. To install
+on accounts other than the app owner's, the GitHub App must be public (a
+Marketplace listing is not required). A private app is limited to its owning
+account. After installation, the callback refreshes dashboard access; an install
+request awaiting approval does not grant repository access.
+
 ## Endpoints
 
 ### `GET /github/connection?limit=30&cursor=...`
@@ -49,7 +63,8 @@ Returns `{ data: { status, account, installations, installUrl, lastSyncedAt },
 pagination }`. Installation lists are paginated (limit 1–100).
 
 - `connected`: GitHub identity is authorized and at least one installation exists;
-  check individual installations' `suspended` flag.
+  check individual installations' `suspended` flag. `installUrl` is also available
+  when `GITHUB_APP_SLUG` is configured, for installation in another account.
 - `installation_required`: authorized identity but no installations; navigate the
   browser to `installUrl`. `GITHUB_APP_SLUG` must be configured for this flow.
 - `reauthorization_required`: expired, revoked, unrefreshable, or invalid token;

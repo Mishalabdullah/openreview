@@ -267,6 +267,11 @@ export function createDashboardData(options: {
     });
   }
 
+  function installApp() {
+    const url = connection.metadata()?.installUrl;
+    if (url) window.location.assign(url);
+  }
+
   return {
     view,
     navigate,
@@ -274,6 +279,7 @@ export function createDashboardData(options: {
     status,
     connected,
     refresh,
+    installApp,
     repositories,
     pulls,
     overview,

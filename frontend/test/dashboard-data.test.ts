@@ -10,11 +10,12 @@ afterEach(() => {
   cleanups.splice(0).forEach((dispose) => dispose());
 });
 
-function setup(path: string) {
+function setup(path: string, installUrl: string | null = null) {
   const events = new EventTarget();
   const pushState = vi.fn();
+  const assign = vi.fn();
   vi.stubGlobal("window", {
-    location: { pathname: path, search: "" },
+    location: { pathname: path, search: "", assign },
     history: { pushState },
     addEventListener: events.addEventListener.bind(events),
     removeEventListener: events.removeEventListener.bind(events),
@@ -32,7 +33,7 @@ function setup(path: string) {
             status: "connected",
             account: null,
             installations: [],
-            installUrl: null,
+            installUrl,
             lastSyncedAt: null,
           }
         : url.pathname.endsWith("overview")
@@ -74,10 +75,28 @@ function setup(path: string) {
   });
   const count = (suffix: string) =>
     calls.filter((url) => url.pathname.endsWith(suffix)).length;
-  return { model, calls, count, pushState, setUserId, setSigningOut };
+  return { model, calls, count, pushState, assign, setUserId, setSigningOut };
 }
 
 describe("dashboard request lifecycle", () => {
+  it("opens the server installation flow for an already connected account", async () => {
+    const url = "http://localhost:1337/api/v1/github/install";
+    const { model, assign, count } = setup("/dashboard/settings", url);
+    await vi.waitFor(() =>
+      expect(model.connection.metadata()?.status).toBe("connected"),
+    );
+    model.installApp();
+    expect(assign).toHaveBeenCalledWith(url);
+    expect(count("repositories")).toBe(0);
+  });
+  it("does not navigate without an installation URL", async () => {
+    const { model, assign } = setup("/dashboard/settings");
+    await vi.waitFor(() =>
+      expect(model.connection.metadata()?.status).toBe("connected"),
+    );
+    model.installApp();
+    expect(assign).not.toHaveBeenCalled();
+  });
   it.each(["settings", "models", "review-rules"])(
     "does not fetch repositories on a direct %s visit",
     async (view) => {

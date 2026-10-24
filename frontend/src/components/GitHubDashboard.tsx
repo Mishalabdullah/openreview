@@ -109,6 +109,22 @@ export function ConnectionPanel(props: {
           Only repositories accessible to both your account and this GitHub App
           are included.
         </p>
+        <Show when={model.connection.metadata()?.installUrl}>
+          <div class="github-install-action">
+            <button
+              type="button"
+              class="dashboard-control"
+              disabled={model.connection.loading()}
+              onClick={() => model.installApp()}
+            >
+              Install in another account or organization
+            </button>
+            <p class="section-message">
+              Choose an account on GitHub. Your organization may require owner
+              approval.
+            </p>
+          </div>
+        </Show>
         <ul class="installation-list" aria-label="GitHub App installations">
           <For each={model.connection.items()}>
             {(installation) => (
@@ -161,15 +177,13 @@ export function ConnectionPanel(props: {
             </p>
           }
         >
-          {(url) => (
-            <button
-              type="button"
-              class="button"
-              onClick={() => window.location.assign(url())}
-            >
-              Install GitHub App
-            </button>
-          )}
+          <button
+            type="button"
+            class="button"
+            onClick={() => model.installApp()}
+          >
+            Install GitHub App
+          </button>
         </Show>
       </Show>
       <Show

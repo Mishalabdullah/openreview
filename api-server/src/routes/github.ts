@@ -221,7 +221,11 @@ export function githubRoutes(
   routes.get("/github/connection", async (c) => {
     const query = parseQuery(c, pageQuery);
     const result = await c.var.github.connection(query.limit, query.cursor);
-    if (result.data.status === "installation_required")
+    // Existing installations must not hide the account/organization chooser.
+    if (
+      result.data.status === "installation_required" ||
+      c.var.config.GITHUB_APP_SLUG
+    )
       result.data.installUrl = installURL(c);
     return c.json(result);
   });

@@ -95,6 +95,14 @@ that the configured app has live repository permissions.
 
 ### Settings and model routing drafts
 
+Settings → Repository access includes **Install in another account or
+organization**, even when GitHub is already connected. The button opens the
+backend's signed installation flow, then GitHub's account chooser. GitHub decides
+whether installation is allowed or needs organization-owner approval. The app
+must allow installation outside its owner's account (public GitHub App
+visibility); no Marketplace listing is required. Approved installations refresh
+access on return. Repositories you collaborate on can appear alongside your own.
+
 `/dashboard/settings` provides session profile information, the existing persistent
 light/dark preference, GitHub connection management, and sign-out. It works even
 when GitHub is disconnected; it does not edit the account on the backend.

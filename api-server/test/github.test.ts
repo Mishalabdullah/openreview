@@ -253,6 +253,84 @@ afterAll(async () => {
 });
 
 describe("GitHub frontend API", () => {
+  it("offers the installation chooser even when an account already has installations", async () => {
+    const response = await get("/github/connection");
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      data: {
+        status: "connected",
+        installUrl: "http://localhost:1337/api/v1/github/install",
+      },
+    });
+  });
+  it("keeps repositories isolated between two linked users sharing the same cache", async () => {
+    await db.insert(schema.account).values({
+      id: "second-local-account",
+      accountId: "999",
+      providerId: "github",
+      userId: "other-user",
+      accessToken: await symmetricEncrypt({
+        key: env.BETTER_AUTH_SECRET,
+        data: "second-user-token",
+      }),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    try {
+      const { store } = memoryGitHubCache();
+      const scopedFetch = vi.fn<typeof fetch>(async (input, init) => {
+        const second =
+          new Headers(init?.headers).get("Authorization") ===
+          "Bearer second-user-token";
+        const id = second ? 3 : 1;
+        const installationId = second ? 20 : 10;
+        const url = new URL(String(input));
+        if (url.pathname === "/user/installations")
+          return json({
+            total_count: 1,
+            installations: [installation(installationId)],
+          });
+        if (
+          url.pathname === `/user/installations/${installationId}/repositories`
+        )
+          return json({ total_count: 1, repositories: [repo(id)] });
+        throw new Error("Unexpected user-scoped API request");
+      });
+      const cachedApp = createApp({
+        createDatabase: () => ({ db, close: async () => {} }),
+        createAuth: () => auth,
+        githubFetch: scopedFetch,
+        githubCache: store,
+      });
+      const request = (path: string, session: string) =>
+        cachedApp.request(
+          `http://localhost:1337/api/v1${path}`,
+          { headers: { Cookie: session } },
+          env,
+        );
+      expect(
+        await (await request("/repositories", cookie)).json(),
+      ).toMatchObject({ data: [{ id: "1" }] });
+      expect(
+        await (await request("/repositories", otherCookie)).json(),
+      ).toMatchObject({ data: [{ id: "3" }] });
+      scopedFetch.mockClear();
+      const warm = await request("/repositories", otherCookie);
+      expect(warm.headers.get("X-GitHub-Cache")).toBe("HIT");
+      expect(await warm.json()).toMatchObject({ data: [{ id: "3" }] });
+      expect(scopedFetch).not.toHaveBeenCalled();
+      expect(
+        (await request("/repositories/1/pull-requests/1", otherCookie)).status,
+      ).toBe(404);
+      expect(
+        (await request("/repositories/3/pull-requests/1", cookie)).status,
+      ).toBe(404);
+    } finally {
+      await db
+        .delete(schema.account)
+        .where(eq(schema.account.id, "second-local-account"));
+    }
+  });
   it("serves warm dashboard reads without GitHub calls, while authenticating each request", async () => {
     const { store } = memoryGitHubCache();
     const cachedApp = createApp({
