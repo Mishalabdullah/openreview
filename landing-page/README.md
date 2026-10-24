@@ -42,6 +42,6 @@ featured: false
 
 `author` and `updatedDate` are optional. Level-two headings automatically populate the article table of contents. The included articles are sample editorial content based on the design mockups.
 
-Product links are centralized in `src/consts.ts`. The canonical site URL defaults to `https://openreview.si`; set `SITE_URL` when building for another domain. The “Get started” action points to the repository’s getting-started section. The journal subscription uses RSS; no email subscription service is configured.
+Product links are centralized in `src/consts.ts`. Primary CTAs open the live application at `https://app.openreview.si/`; GitHub remains the source and self-hosting alternative. The canonical site URL defaults to `https://openreview.si`; set `SITE_URL` when building for another domain. The journal subscription uses RSS; no email subscription service is configured.
 
 Shared colors, spacing, typography, and responsive rules live in `src/styles/global.css`. The theme follows the system preference until a visitor makes a choice, which is then persisted in local storage. Fonts are self-hosted using Fontsource packages; no third-party font requests are needed.

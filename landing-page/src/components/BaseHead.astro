@@ -3,7 +3,7 @@ import '../styles/global.css';
 import '@fontsource-variable/manrope';
 import '@fontsource-variable/newsreader';
 import '@fontsource/ibm-plex-mono/400.css';
-import { SITE_TITLE, SITE_DESCRIPTION, GITHUB_URL } from '../consts';
+import { SITE_TITLE, SITE_DESCRIPTION, GITHUB_URL, APP_URL } from '../consts';
 interface Props {
 	title: string;
 	description: string;
@@ -24,7 +24,7 @@ const structuredData = {
   { '@type': 'WebSite', '@id': `${siteURL}#website`, name: SITE_TITLE, url: siteURL.href, description: SITE_DESCRIPTION, publisher: { '@id': organization['@id'] } },
   { '@type': article ? 'BlogPosting' : 'WebPage', '@id': `${canonicalURL}#page`, url: canonicalURL.href, name: title, headline: title, description, inLanguage: 'en', isPartOf: { '@id': `${siteURL}#website` }, image: socialImage.href,
    ...(article ? { datePublished: pubDate?.toISOString(), dateModified: (updatedDate ?? pubDate)?.toISOString(), author: { '@type': 'Organization', name: author ?? 'The OpenReview team' }, publisher: { '@id': organization['@id'] }, mainEntityOfPage: canonicalURL.href } : {}) },
-  ...(Astro.url.pathname === '/' ? [{ '@type': 'SoftwareSourceCode', '@id': `${siteURL}#software`, name: 'OpenReview', description: SITE_DESCRIPTION, codeRepository: GITHUB_URL, url: siteURL.href, runtimePlatform: 'Self-hosted', keywords: ['open-source code review agent', 'AI code review', 'bring your own API keys', 'self-hosted code review'] }] : []),
+  ...(Astro.url.pathname === '/' ? [{ '@type': 'SoftwareSourceCode', '@id': `${siteURL}#software`, name: 'OpenReview', description: SITE_DESCRIPTION, codeRepository: GITHUB_URL, url: APP_URL, runtimePlatform: 'Web; self-hosted', keywords: ['open-source code review agent', 'AI code review', 'bring your own API keys', 'self-hosted code review'] }] : []),
  ],
 };
 ---

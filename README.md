@@ -6,9 +6,9 @@ OpenReview is an open-source code review platform for developers and teams who w
 
 ## Project status
 
-OpenReview is in early development. This repository currently contains the public-facing website: the landing page, journal, manifesto, and visual identity. The code review application and backend have not been implemented yet.
+OpenReview is live at **[app.openreview.si](https://app.openreview.si/)**. Use the hosted application to get started, or explore the source for self-hosting. The public-facing website includes the landing page, journal, manifesto, and visual identity.
 
-The review workspace shown on the website is an interactive product preview, not a connected code review service.
+The review workspace shown on the landing page is an illustrative interactive preview. Open the live application to use OpenReview.
 
 ## Vision
 
@@ -90,7 +90,7 @@ The production website is generated in `landing-page/dist/`.
 | Manifesto    | The principles behind OpenReview                                                   |
 | Identity     | Custom logo, brand presentation, and downloadable SVG                              |
 
-The website uses **Astro**, **TypeScript**, and **CSS**, with self-hosted Manrope, Newsreader, and IBM Plex Mono fonts. Product links currently lead to this repository. Journal subscriptions use RSS; no email subscription service is connected.
+The website uses **Astro**, **TypeScript**, and **CSS**, with self-hosted Manrope, Newsreader, and IBM Plex Mono fonts. Primary product links open the [live application](https://app.openreview.si/); source and documentation links lead to this repository. Journal subscriptions use RSS; no email subscription service is connected.
 
 ## Contributing
 

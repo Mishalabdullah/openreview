@@ -28,8 +28,8 @@ const features: {
 	},
 ];
 const steps = [
-	{ title: 'Connect your repo', description: 'Bring your code into focus.' },
-	{ title: 'Review together', description: 'Keep feedback close to the code.' },
+	{ title: 'Open the app', description: 'Start online. No self-hosting required.' },
+	{ title: 'Make reviews yours', description: 'Bring your provider and define your review rules.' },
 	{
 		title: 'Merge with confidence',
 		description: 'Resolve, approve, and ship.',
@@ -40,9 +40,8 @@ const steps = [
 <SiteLayout>
 	<div class="container">
 		<section class="hero" aria-labelledby="hero-title">
-			<a href={GITHUB_URL} class="release-pill mono">
-				<span class="status-dot" aria-hidden="true"></span>Open source / Built
-				for your next merge <span aria-hidden="true">↗</span>
+			<a href={GET_STARTED_URL} class="release-pill mono">
+				<span class="status-dot" aria-hidden="true"></span>OpenReview is live / Open the app <span aria-hidden="true">↗</span>
 			</a>
 			<h1 id="hero-title">
 				Less back-and-forth.
@@ -50,20 +49,20 @@ const steps = [
 				More forward.
 			</h1>
 			<p class="hero-description">
-				An open-source AI code review agent. Bring your own API keys,
+				Your open-source AI code review agent. Start reviewing online,
 				<br />
-				set your review rules, and self-host on your infrastructure.
+				bring your own API keys, and make every review follow your rules.
 			</p>
 			<div class="hero-actions">
 				<a href={GET_STARTED_URL} class="button">
-					Start reviewing <span aria-hidden="true">→</span>
+					Start reviewing now <span aria-hidden="true">→</span>
 				</a>
 				<a href={GITHUB_URL} class="button button-secondary">
 					View source on GitHub <span aria-hidden="true">↗</span>
 				</a>
 			</div>
 			<p class="hero-note mono">
-				Diffs that make sense. Feedback that moves you.
+				Use the hosted app. Or self-host. Your workflow, your choice.
 			</p>
 		</section>
 		<ReviewPreview />
@@ -116,13 +115,13 @@ const steps = [
 		</div>
 		<section class="closing">
 			<h2>Your next great merge starts here.</h2>
-			<p>Better conversations. Clearer decisions. Code that moves forward.</p>
+			<p>Open the app and put AI code review to work. Your keys. Your rules.</p>
 			<div class="closing-actions">
 				<a class="button" href={GET_STARTED_URL}>
-					Get started with OpenReview <span aria-hidden="true">→</span>
+					Open OpenReview <span aria-hidden="true">→</span>
 				</a>
 				<span class="mono">
-					Open source. Developer driven. Always evolving.
+					Live now at app.openreview.si. Self-hosting optional.
 				</span>
 			</div>
 		</section>
