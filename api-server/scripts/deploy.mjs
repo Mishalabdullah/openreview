@@ -15,26 +15,22 @@ const secretNames = [
   "GITHUB_APP_ID",
   "GITHUB_APP_PRIVATE_KEY",
   "OPENAI_API_KEY",
+  "DATABASE_URL",
 ];
 
-export function deploymentConfig(source, environment, hyperdriveId) {
+export function deploymentConfig(source, environment) {
   if (!["dev", "production"].includes(environment))
     throw new Error("Select dev or production explicitly.");
-  if (!/^[a-f0-9]{32}$/i.test(hyperdriveId ?? ""))
-    throw new Error(
-      "Set the selected environment's HYPERDRIVE_ID (32 hex characters).",
-    );
   const errors = [];
   const config = parse(source, errors, { allowTrailingComma: true });
   if (errors.length) throw new Error("Invalid Wrangler configuration.");
   const selected = config.env[environment];
-  selected.hyperdrive[0].id = hyperdriveId;
   // Do not allow accidental use of another environment's config or local queues.
   config.env = { [environment]: selected };
   return config;
 }
 
-export function deploymentSecrets(source, privateKey) {
+export function deploymentSecrets(source, privateKey, databaseUrl) {
   let secrets;
   try {
     secrets = JSON.parse(source);
@@ -47,11 +43,14 @@ export function deploymentSecrets(source, privateKey) {
   // Prefer a separate raw PEM secret, while supporting existing JSON-only setup.
   if (privateKey !== undefined && privateKey !== "")
     secrets.GITHUB_APP_PRIVATE_KEY = privateKey;
+  // Keep the existing standalone GitHub DATABASE_URL secret out of JSON edits.
+  if (databaseUrl !== undefined && databaseUrl !== "")
+    secrets.DATABASE_URL = databaseUrl;
   for (const name of secretNames) {
     if (typeof secrets[name] !== "string" || !secrets[name].trim())
       throw new Error(
-        name === "GITHUB_APP_PRIVATE_KEY"
-          ? "Set GITHUB_APP_PRIVATE_KEY as a separate secret or inside API_SECRETS_JSON."
+        ["GITHUB_APP_PRIVATE_KEY", "DATABASE_URL"].includes(name)
+          ? `Set ${name} as a separate secret or inside API_SECRETS_JSON.`
           : `API_SECRETS_JSON is missing ${name}.`,
       );
   }
@@ -62,6 +61,17 @@ export function deploymentSecrets(source, privateKey) {
   )
     throw new Error("Invalid auth secret, GitHub App ID, or slug.");
   try {
+    const url = new URL(secrets.DATABASE_URL);
+    if (
+      !["postgres:", "postgresql:"].includes(url.protocol) ||
+      !url.hostname ||
+      url.hostname.endsWith(".railway.internal")
+    )
+      throw new Error();
+  } catch {
+    throw new Error("DATABASE_URL must be a public PostgreSQL connection URL.");
+  }
+  try {
     if (
       createPrivateKey(secrets.GITHUB_APP_PRIVATE_KEY).asymmetricKeyType !==
       "rsa"
@@ -70,7 +80,8 @@ export function deploymentSecrets(source, privateKey) {
   } catch {
     throw new Error("GITHUB_APP_PRIVATE_KEY must contain a valid RSA PEM key.");
   }
-  // Allowlist only backend secrets. Never upload DATABASE_URL or CI credentials.
+  // Allowlist only backend secrets, including the direct runtime database URL.
+  // Never upload Cloudflare CI credentials.
   return Object.fromEntries(secretNames.map((name) => [name, secrets[name]]));
 }
 
@@ -82,7 +93,6 @@ async function main() {
   const config = deploymentConfig(
     await readFile(path.join(root, "wrangler.jsonc"), "utf8"),
     environment,
-    process.env.HYPERDRIVE_ID,
   );
   let secrets;
   if (!dryRun) {
@@ -94,6 +104,7 @@ async function main() {
     secrets = deploymentSecrets(
       process.env.API_SECRETS_JSON,
       process.env.GITHUB_APP_PRIVATE_KEY,
+      process.env.DATABASE_URL,
     );
   }
   if (flags.includes("--check")) return;

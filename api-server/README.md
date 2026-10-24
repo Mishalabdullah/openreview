@@ -36,17 +36,16 @@ nor `GITHUB_WEBHOOK_URL` is required.
 
 ## Configuration
 
-| Binding / variable      | Purpose                                                                  |
-| ----------------------- | ------------------------------------------------------------------------ |
-| `ENVIRONMENT`           | `local`, `dev`, or `production`, set in Wrangler                         |
-| `BETTER_AUTH_URL`       | Exact API origin (no path or trailing slash)                             |
-| `FRONTEND_URL`          | Single explicit trusted frontend origin                                  |
-| `BETTER_AUTH_SECRET`    | Secret signing sessions and encrypting provider tokens                   |
-| `GITHUB_CLIENT_ID`      | Environment-specific GitHub App OAuth client ID                          |
-| `GITHUB_CLIENT_SECRET`  | Environment-specific GitHub App OAuth secret                             |
-| `GITHUB_WEBHOOK_SECRET` | Reserved secret for future ingestion; not used to acknowledge events yet |
-| `DATABASE_URL`          | Local runtime and direct migration connection, never a frontend variable |
-| `HYPERDRIVE`            | Required database binding in deployed environments                       |
+| Binding / variable      | Purpose                                                                                            |
+| ----------------------- | -------------------------------------------------------------------------------------------------- |
+| `ENVIRONMENT`           | `local`, `dev`, or `production`, set in Wrangler                                                   |
+| `BETTER_AUTH_URL`       | Exact API origin (no path or trailing slash)                                                       |
+| `FRONTEND_URL`          | Single explicit trusted frontend origin                                                            |
+| `BETTER_AUTH_SECRET`    | Secret signing sessions and encrypting provider tokens                                             |
+| `GITHUB_CLIENT_ID`      | Environment-specific GitHub App OAuth client ID                                                    |
+| `GITHUB_CLIENT_SECRET`  | Environment-specific GitHub App OAuth secret                                                       |
+| `GITHUB_WEBHOOK_SECRET` | Reserved secret for future ingestion; not used to acknowledge events yet                           |
+| `DATABASE_URL`          | Direct PostgreSQL runtime and migration connection in every environment; never a frontend variable |
 
 | Environment | API                             | Frontend                    | GitHub authorization callback                            |
 | ----------- | ------------------------------- | --------------------------- | -------------------------------------------------------- |
@@ -55,12 +54,12 @@ nor `GITHUB_WEBHOOK_URL` is required.
 | Production  | `https://api.openreview.si`     | `https://openreview.si`     | `https://api.openreview.si/api/auth/callback/github`     |
 
 Use separate GitHub Apps/OAuth credentials, auth secrets, webhook secrets,
-databases, and Hyperdrive configurations for all three environments. Separate
+databases for all three environments. Separate
 databases are the supported isolation strategy here; do not point dev at production.
 The origins are deliberately validated against the selected environment.
 
 Secrets belong in Cloudflare-managed secrets for deployments. `DATABASE_URL` is
-not used as a fallback in deployed environments, even if accidentally present.
+required for direct PostgreSQL access in every environment.
 No backend secret belongs in a `VITE_*` variable.
 
 ## Database and schema workflow
@@ -93,13 +92,15 @@ For a confirmed development database, use a separately protected environment fil
 DB_ENV_FILE=.dev.vars.dev npm run db:migrate
 ```
 
-That file must contain the **direct dev database** `DATABASE_URL`; Hyperdrive
-bindings cannot be used by the migration CLI outside a Worker. Review the target
+That file must contain the **direct dev database** `DATABASE_URL`. For Railway,
+use its public TCP endpoint when connecting from outside Railway. Review the target
 before running. Production migrations require a separately authorized rollout.
 
 Runtime pools are lazy, scoped to one request, capped at one connection, bounded
-by timeouts, and closed in `finally`. Hyperdrive supplies the distributed origin
-pool. No auth instances or database connections are cached across requests.
+by timeouts, and closed in `finally`. Each invocation connects directly to
+PostgreSQL; there is no shared connection proxy. No auth instances or database
+connections are cached across requests. Monitor total database connections as
+traffic grows: one per invocation is not a global limit.
 
 ## GitHub App settings and tokens
 
@@ -228,7 +229,7 @@ database logs deliberately contain no provider payloads. Configure Cloudflare
 WAF/rate limiting for public authentication endpoints before public rollout;
 per-isolate memory rate limits are not a distributed abuse-control mechanism.
 
-## Hyperdrive and deployment
+## PostgreSQL and deployment
 
 See [`../docs/DEPLOYMENT.md`](../docs/DEPLOYMENT.md) for the shared frontend/API
 GitHub Actions workflow and required one-time setup. Pushes to `dev` deploy dev;
@@ -236,10 +237,10 @@ GitHub Actions workflow and required one-time setup. Pushes to `dev` deploy dev;
 PRs run checks only. No remote resources have been provisioned by this setup.
 
 Each environment has isolated queue bindings and a recovery cron. Create its
-database, queues and Hyperdrive configuration first, **disable Hyperdrive query
-caching**, and use TLS with certificate validation for the origin connection.
-Set that environment's `HYPERDRIVE_ID` GitHub variable; the deploy script injects
-it into an ignored temporary Wrangler config. Do not deploy placeholder IDs.
+database and queues first, and use TLS with certificate validation for the
+database connection. Set the GitHub environment's `DATABASE_URL` secret to its
+public Railway PostgreSQL URL. The workflow uses it for migrations and uploads
+it as a Worker secret for runtime access. No extra database binding is needed.
 
 The workflow validates secrets, applies committed migrations, then uploads
 backend secrets alongside Worker code. Local `.env`/`.dev.vars` files are never
@@ -264,13 +265,13 @@ npm run format:check
 
 Tests use no GitHub credentials. The SQL migration is executed against disposable
 PGlite storage in integration tests. This verifies PostgreSQL-compatible schema,
-sessions and authorization, **not** a real origin PostgreSQL/Hyperdrive connection
+sessions and authorization, **not** a real origin PostgreSQL connection
 or GitHub authorization callback exchange. Run a real browser login, migration
 and revocation check against your confirmed development database before rollout.
 
 The initial environment has no Better Auth secret or confirmed non-production
-database designation. No existing database was migrated, no Hyperdrive resource
-was created, and nothing was deployed. Real login and live database connectivity
+database designation. No existing database was migrated and nothing was
+deployed by this setup. Real login and live database connectivity
 remain credential/infrastructure-dependent setup steps.
 
 `npm audit` currently reports four moderate development-tool dependency findings
@@ -330,5 +331,5 @@ The runtime dependencies were retained rather than migrated to prerelease majors
 - [Organization plugin](https://www.better-auth.com/docs/plugins/organization)
 - [GitHub provider](https://www.better-auth.com/docs/authentication/github)
 - [Drizzle PostgreSQL](https://orm.drizzle.team/docs/get-started-postgresql)
-- [Hyperdrive setup](https://developers.cloudflare.com/hyperdrive/get-started/)
+- [Workers database connections](https://developers.cloudflare.com/workers/databases/connecting-to-databases/)
 - [Wrangler environments](https://developers.cloudflare.com/workers/wrangler/environments/)

@@ -54,12 +54,10 @@ export function readConfig(bindings: Bindings): Config {
 }
 
 export function databaseUrl(bindings: Bindings): string {
-  if (bindings.HYPERDRIVE?.connectionString)
-    return bindings.HYPERDRIVE.connectionString;
-  if (bindings.ENVIRONMENT === "local" && bindings.DATABASE_URL) {
+  if (bindings.DATABASE_URL) {
     const result = z.url().safeParse(bindings.DATABASE_URL);
     if (result.success && /^postgres(ql)?:/.test(result.data))
       return result.data;
   }
-  throw new Error("Database binding is not configured");
+  throw new Error("DATABASE_URL is missing or invalid");
 }

@@ -5,10 +5,7 @@ import type { GitHubService } from "../lib/github/service";
 import type { ReviewQueue } from "../lib/reviews/jobs";
 
 // Public vars come from `wrangler types`; secrets are supplied at runtime.
-export type Bindings = Omit<
-  CloudflareBindings,
-  "REVIEW_QUEUE" | "HYPERDRIVE"
-> & {
+export type Bindings = Omit<CloudflareBindings, "REVIEW_QUEUE"> & {
   BETTER_AUTH_SECRET: string;
   GITHUB_CLIENT_ID: string;
   GITHUB_CLIENT_SECRET: string;
@@ -21,8 +18,6 @@ export type Bindings = Omit<
   OPENAI_REVIEW_MODEL?: string;
   REVIEW_QUEUE?: ReviewQueue;
   DATABASE_URL?: string;
-  // Optional until separately provisioned for each deployed environment.
-  HYPERDRIVE?: { connectionString: string };
 };
 
 export type AppEnv = {

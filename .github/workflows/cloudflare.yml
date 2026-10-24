@@ -57,7 +57,6 @@ jobs:
     env:
       DEPLOY_ENV: ${{ github.ref_name == 'main' && 'production' || 'dev' }}
       CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
-      HYPERDRIVE_ID: ${{ vars.HYPERDRIVE_ID }}
       CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV: "false"
       WRANGLER_SEND_METRICS: "false"
     steps:
@@ -86,6 +85,7 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           API_SECRETS_JSON: ${{ secrets.API_SECRETS_JSON }}
           GITHUB_APP_PRIVATE_KEY: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: node scripts/deploy.mjs "$DEPLOY_ENV" --check
       - name: Build frontend for the selected API
         working-directory: frontend
@@ -113,6 +113,7 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           API_SECRETS_JSON: ${{ secrets.API_SECRETS_JSON }}
           GITHUB_APP_PRIVATE_KEY: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: node scripts/deploy.mjs "$DEPLOY_ENV"
       - name: Check API health
         run: |

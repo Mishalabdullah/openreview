@@ -27,14 +27,21 @@ Start with dev. Do not point dev at the production database or GitHub App.
 1. Add `openreview.si` to the intended Cloudflare account and configure DNS.
    Resolve any existing Worker routes/DNS records that conflict with the four
    custom domains above. Wrangler attaches custom domains at deployment.
-2. Use a Workers plan suitable for Queues, Hyperdrive and this workload; Workers
+2. Use a Workers plan suitable for Queues and this workload; Workers
    Paid is the recommended production baseline. Review current usage pricing.
 3. Create separate dev and production PostgreSQL databases (or isolated branches
-   with separate credentials). Enable production backups/recovery. Prefer a
-   separate least-privilege application role and migration role per database.
-4. Create one Hyperdrive configuration for each database. **Disable Hyperdrive
-   query caching**: sessions, leases, and job status must be fresh. Keep the
-   application's existing bounded dashboard cache instead. Record each ID.
+   with separate credentials). Enable production backups/recovery. Scope each
+   database role to its environment. The current workflow uses the same URL for
+   runtime and migrations, so that role must also have migration permissions.
+4. The API connects **directly to Railway PostgreSQL** through the `DATABASE_URL`
+   Worker secret. In Railway, enable public TCP access for each database and use
+   its public connection URL, not a `railway.internal` hostname. With PgBouncer,
+   use the public unpooled URL. Configure TLS according to your database setup;
+   do not bypass certificate validation. There is no shared connection proxy:
+   each request/queue invocation owns a lazy pool capped at one connection,
+   with timeouts and cleanup. Monitor total PostgreSQL connections as traffic
+   grows; the cap is per invocation, not a global limit. Keep the existing
+   bounded dashboard cache.
 5. Create these queues before deploying:
 
    | Environment | Review queue                    | Dead-letter queue                   |
@@ -48,7 +55,7 @@ Start with dev. Do not point dev at the production database or GitHub App.
    them rather than automatically replaying poison messages.
 
 6. Create a Cloudflare API token scoped to the intended account and zone, with
-   Worker deployment, custom-domain/route management, Queues, and Hyperdrive
+   Worker deployment, custom-domain/route management, and Queues
    permissions appropriate for deployment. Use separate tokens for dev/prod
    where practical. Never use a global API key. Review the token permissions
    against Cloudflare's current deployment requirements.
@@ -67,14 +74,13 @@ In **Settings → Environments**, create `dev` and `production`.
 
 Set the following **in each GitHub environment**, not as shared repository values:
 
-| Type     | Name                    | Value                                                                                                   |
-| -------- | ----------------------- | ------------------------------------------------------------------------------------------------------- |
-| Variable | `CLOUDFLARE_ACCOUNT_ID` | Target Cloudflare account ID                                                                            |
-| Variable | `HYPERDRIVE_ID`         | That environment's Hyperdrive ID                                                                        |
-| Secret   | `CLOUDFLARE_API_TOKEN`  | Scoped deployment token                                                                                 |
-| Secret   | `DATABASE_URL`          | PostgreSQL URL for this environment's migration role; use the provider's direct endpoint where required |
-| Secret   | `API_SECRETS_JSON`      | JSON object shown below, with real backend values                                                       |
-| Secret   | `GH_APP_PRIVATE_KEY`    | Full RSA PEM private key, with real line breaks (no quotes or JSON escaping)                            |
+| Type     | Name                    | Value                                                                              |
+| -------- | ----------------------- | ---------------------------------------------------------------------------------- |
+| Variable | `CLOUDFLARE_ACCOUNT_ID` | Target Cloudflare account ID                                                       |
+| Secret   | `CLOUDFLARE_API_TOKEN`  | Scoped deployment token                                                            |
+| Secret   | `DATABASE_URL`          | Public Railway PostgreSQL URL for this environment, used by runtime and migrations |
+| Secret   | `API_SECRETS_JSON`      | JSON object shown below, with real backend values                                  |
+| Secret   | `GH_APP_PRIVATE_KEY`    | Full RSA PEM private key, with real line breaks (no quotes or JSON escaping)       |
 
 ```json
 {
@@ -98,10 +104,12 @@ No secrets belong in `VITE_*` variables. Keep `BETTER_AUTH_SECRET`
 stable: changing it invalidates sessions and can break decryption of stored
 provider tokens. Use a different secret per environment.
 
-The deploy script validates and allowlists these eight keys. It writes an ignored,
+The deploy script combines the seven JSON values, private key and database URL,
+then validates and allowlists these nine backend secrets. It writes an ignored,
 mode-0600 temporary secrets file, uploads it alongside the Worker code in one
-deployment, then deletes the file. It never uploads `DATABASE_URL`
-or Cloudflare credentials as Worker secrets. Existing unrelated
+deployment, then deletes the file. `DATABASE_URL` is now uploaded as a Worker
+secret for direct database access. Cloudflare CI credentials are never uploaded.
+Existing unrelated
 Worker secrets are not removed by this additive upload.
 
 ### GitHub Apps
@@ -167,9 +175,9 @@ Before promoting dev to production:
 ## Local commands and rollback
 
 Local `npm run dev` remains unchanged and uses local queue simulation. It does
-not deploy or require the hosted Hyperdrive IDs.
+not deploy; it reads the local/development `DATABASE_URL`.
 
-For a manual API deployment, set the selected environment's `HYPERDRIVE_ID`,
+For a manual API deployment, set the selected environment's `DATABASE_URL`,
 `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`, `API_SECRETS_JSON`, and
 `GITHUB_APP_PRIVATE_KEY` securely in
 the process environment, then run `npm run deploy:dev` or `npm run deploy:prod`
@@ -179,12 +187,12 @@ protected workflow for normal releases. A bare `npm run deploy` is refused.
 Offline API packaging checks, without uploading or reading local secrets:
 
 ```sh
-HYPERDRIVE_ID=00000000000000000000000000000000 npm run deploy:dev -- --dry-run
-HYPERDRIVE_ID=00000000000000000000000000000000 npm run deploy:prod -- --dry-run
+npm run deploy:dev -- --dry-run
+npm run deploy:prod -- --dry-run
 ```
 
-The dummy ID is for dry runs only. Successful packaging does not verify real
-resources or permissions.
+Successful packaging does not verify real resources, database connectivity, or
+permissions. Dry runs do not need credentials or a database URL.
 
 Frontend commands are `npm run deploy:dev` and `npm run deploy:prod` from
 `frontend`; they rebuild for the correct API before deploying. Do not run these

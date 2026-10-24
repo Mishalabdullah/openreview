@@ -79,7 +79,7 @@ queue resource is needed for this local simulation.
 Hosted dev/production configuration and CI/CD are in
 [`../../docs/DEPLOYMENT.md`](../../docs/DEPLOYMENT.md). Each named environment
 has separate queue bindings and a once-per-minute recovery cron. The underlying
-queues, databases, Hyperdrive configurations and credentials must still be
+queues, databases and credentials must still be
 created/configured before the first deployment. Do not deploy the local queue
 names as production resources.
 

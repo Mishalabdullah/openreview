@@ -117,17 +117,20 @@ describe("infrastructure and configuration", () => {
     ).toThrow();
   });
 
-  it("requires Hyperdrive outside local and prefers it when present", () => {
-    expect(databaseUrl(env)).toBe(env.DATABASE_URL);
-    expect(
-      databaseUrl({
-        ...env,
-        HYPERDRIVE: { connectionString: "postgresql://hyperdrive/db" },
-      }),
-    ).toBe("postgresql://hyperdrive/db");
-    expect(() => databaseUrl({ ...env, ENVIRONMENT: "dev" })).toThrow(
-      "Database binding",
-    );
+  it("uses DATABASE_URL directly in every environment", () => {
+    for (const environment of ["local", "dev", "production"] as const) {
+      expect(databaseUrl({ ...env, ENVIRONMENT: environment })).toBe(
+        env.DATABASE_URL,
+      );
+      for (const value of [undefined, "", "https://example.com", "not-a-url"])
+        expect(() =>
+          databaseUrl({
+            ...env,
+            ENVIRONMENT: environment,
+            DATABASE_URL: value,
+          }),
+        ).toThrow("DATABASE_URL");
+    }
   });
 
   it("uses a lazy request-owned pool and allows cleanup without connecting", async () => {

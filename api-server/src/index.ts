@@ -24,7 +24,7 @@ type Dependencies = {
   githubCache?: GitHubCacheStore | null;
 };
 
-// Factories are injectable for tests; production always uses pg + Hyperdrive.
+// Factories are injectable for tests; production uses pg with DATABASE_URL.
 export function createApp(
   dependencies: Dependencies = { createDatabase, createAuth },
 ) {

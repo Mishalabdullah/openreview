@@ -43,10 +43,6 @@
         "BETTER_AUTH_URL": "https://api.dev.openreview.si",
         "FRONTEND_URL": "https://dev.openreview.si",
       },
-      // The deployment script injects the environment's GitHub HYPERDRIVE_ID var.
-      "hyperdrive": [
-        { "binding": "HYPERDRIVE", "id": "__DEV_HYPERDRIVE_ID__" },
-      ],
       "queues": {
         "producers": [
           { "binding": "REVIEW_QUEUE", "queue": "openreview-reviews-dev" },
@@ -75,9 +71,6 @@
         "BETTER_AUTH_URL": "https://api.openreview.si",
         "FRONTEND_URL": "https://openreview.si",
       },
-      "hyperdrive": [
-        { "binding": "HYPERDRIVE", "id": "__PRODUCTION_HYPERDRIVE_ID__" },
-      ],
       "queues": {
         "producers": [
           {

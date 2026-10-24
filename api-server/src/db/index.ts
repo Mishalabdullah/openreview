@@ -6,7 +6,8 @@ import type { Bindings } from "../types/env";
 import * as schema from "./auth-schema";
 
 export function createDatabase(bindings: Bindings) {
-  // One lazy connection per request; Hyperdrive owns the regional origin pool.
+  // One lazy direct PostgreSQL connection per request/queue invocation.
+  // Never share a pool across Worker invocations; close it in the caller's finally.
   const pool = new Pool({
     connectionString: databaseUrl(bindings),
     max: 1,
