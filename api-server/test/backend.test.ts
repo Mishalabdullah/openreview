@@ -107,7 +107,10 @@ describe("infrastructure and configuration", () => {
       "Invalid backend",
     );
     expect(() =>
-      readConfig({ ...env, FRONTEND_URL: "https://openreview.si" }),
+      readConfig({
+        ...env,
+        FRONTEND_URL: "https://openreview.si" as Bindings["FRONTEND_URL"],
+      }),
     ).toThrow();
     expect(() =>
       readConfig({
@@ -271,14 +274,29 @@ describe("authentication", () => {
       BETTER_AUTH_URL: "https://api.openreview.si" as const,
       FRONTEND_URL: "https://app.openreview.si" as const,
     };
-    expect(() => readConfig({ ...production, FRONTEND_URL: "https://openreview.si" as Bindings["FRONTEND_URL"] })).toThrow("Invalid backend");
-    const preflight = (origin: string) => app.request("https://api.openreview.si/api/v1/me", {
-      method: "OPTIONS", headers: { Origin: origin, "Access-Control-Request-Method": "GET" },
-    }, production);
+    expect(() =>
+      readConfig({
+        ...production,
+        FRONTEND_URL: "https://openreview.si" as Bindings["FRONTEND_URL"],
+      }),
+    ).toThrow("Invalid backend");
+    const preflight = (origin: string) =>
+      app.request(
+        "https://api.openreview.si/api/v1/me",
+        {
+          method: "OPTIONS",
+          headers: { Origin: origin, "Access-Control-Request-Method": "GET" },
+        },
+        production,
+      );
     const allowed = await preflight("https://app.openreview.si");
     expect(allowed.status).toBe(204);
-    expect(allowed.headers.get("Access-Control-Allow-Origin")).toBe("https://app.openreview.si");
-    expect(allowed.headers.get("Access-Control-Allow-Credentials")).toBe("true");
+    expect(allowed.headers.get("Access-Control-Allow-Origin")).toBe(
+      "https://app.openreview.si",
+    );
+    expect(allowed.headers.get("Access-Control-Allow-Credentials")).toBe(
+      "true",
+    );
     expect((await preflight("https://openreview.si")).status).toBe(403);
   });
 
