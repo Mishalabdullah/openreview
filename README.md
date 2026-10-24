@@ -4,6 +4,11 @@
 
 OpenReview is an open-source code review platform for developers and teams who want a faster, cleaner way to review code. The goal is simple: readable diffs, useful context, and focused conversations that help teams ship with confidence.
 
+## Demo Video
+
+[![Watch the video](https://img.youtube.com/vi/r4pk2VYXTKE/maxresdefault.jpg)](https://www.youtube.com/watch?v=r4pk2VYXTKE)   
+
+
 ## Project status
 
 OpenReview is live at **[app.openreview.si](https://app.openreview.si/)**. Use the hosted application to get started, or explore the source for self-hosting. The public-facing website includes the landing page, journal, manifesto, and visual identity.
