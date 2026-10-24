@@ -109,6 +109,21 @@ const remote = vi.fn<typeof fetch>(async (input, init) => {
     expect(body.input).not.toContain("test-openai-key");
     expect(body.input).not.toContain("SHOULD_NOT_BE_SENT");
     if (mode === "ai-failed") return json({}, 429);
+    if (mode === "ai-incomplete")
+      return json({
+        status: "incomplete",
+        incomplete_details: { reason: "max_output_tokens" },
+        output: [
+          {
+            type: "message",
+            content: [{ type: "output_text", text: '{"summary":' }],
+          },
+        ],
+        usage: {
+          output_tokens: 6000,
+          output_tokens_details: { reasoning_tokens: 5900 },
+        },
+      });
     if (mode === "push-during-ai") mode = "superseded";
     if (mode === "lease-lost")
       await db.update(tables.reviewRun).set({ leaseToken: "another-worker" });
@@ -674,6 +689,18 @@ describe("automatic PR reviews", () => {
     expect(published).toHaveLength(1);
     expect(await db.select().from(tables.reviewRun)).toHaveLength(1);
   });
+  it("never publishes a truncated review or automatically repeats an exhausted token budget", async () => {
+    const runId = await startedRun();
+    mode = "ai-incomplete";
+    expect(await processReview(db, config, runId, remote)).toBe("done");
+    expect(published).toHaveLength(0);
+    expect((await db.select().from(tables.reviewRun))[0]).toMatchObject({
+      status: "failed",
+      result: null,
+      errorCode: "OPENAI_OUTPUT_LIMIT",
+    });
+    expect(eyesActive).toBe(true);
+  });
   it("retries transient OpenAI failures without posting a fabricated review", async () => {
     const runId = await startedRun();
     mode = "ai-failed";
@@ -743,6 +770,91 @@ describe("automatic PR reviews", () => {
 });
 
 describe("review safety boundaries", () => {
+  it.each(["gpt-5-mini", "gpt-5-mini-2025-08-07", "other-model"])(
+    "bounds spending and sets compatible reasoning effort for %s",
+    async (model) => {
+      const fetcher = vi.fn<typeof fetch>(async () =>
+        json({
+          status: "completed",
+          output: [
+            {
+              type: "message",
+              content: [
+                {
+                  type: "output_text",
+                  text: JSON.stringify({
+                    summary: "Adds input checks.",
+                    findings: [],
+                  }),
+                },
+              ],
+            },
+          ],
+        }),
+      );
+      await generateReview("test-key", model, {}, fetcher);
+      const request = JSON.parse(String(fetcher.mock.calls[0][1]?.body));
+      expect(request.max_output_tokens).toBe(6000);
+      expect(request.reasoning).toEqual(
+        model.startsWith("gpt-5-mini") ? { effort: "low" } : undefined,
+      );
+    },
+  );
+  it.each([
+    ["max_output_tokens", "OPENAI_OUTPUT_LIMIT"],
+    ["content_filter", "OPENAI_CONTENT_FILTERED"],
+    ["sensitive-untrusted-value", "OPENAI_INCOMPLETE_RESPONSE"],
+  ])("logs a safe completion reason for %s", async (reason, code) => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      await expect(
+        generateReview("test-key", "model", {}, async () =>
+          json({
+            status: "incomplete",
+            incomplete_details: { reason },
+            output: [
+              {
+                type: "message",
+                content: [
+                  { type: "output_text", text: "sensitive-PR-content" },
+                ],
+              },
+            ],
+            usage: {
+              output_tokens: 6000,
+              output_tokens_details: { reasoning_tokens: 5900 },
+            },
+          }),
+        ),
+      ).rejects.toMatchObject({ code, retryable: false });
+      expect(JSON.parse(String(log.mock.calls[0][0]))).toMatchObject({
+        event: "review_openai_incomplete",
+        status: "incomplete",
+        reason: reason === "sensitive-untrusted-value" ? "unknown" : reason,
+        outputLimit: 6000,
+        outputTokens: 6000,
+        reasoningTokens: 5900,
+      });
+      expect(JSON.stringify(log.mock.calls)).not.toContain("sensitive");
+    } finally {
+      log.mockRestore();
+    }
+  });
+  it("does not parse a model refusal as a review", async () => {
+    await expect(
+      generateReview("test-key", "model", {}, async () =>
+        json({
+          status: "completed",
+          output: [
+            {
+              type: "message",
+              content: [{ type: "refusal", refusal: "Not reviewed." }],
+            },
+          ],
+        }),
+      ),
+    ).rejects.toMatchObject({ code: "OPENAI_REVIEW_REFUSED" });
+  });
   it("logs safe OpenAI diagnostics without echoing upstream secrets or PR content", async () => {
     const log = vi.spyOn(console, "error").mockImplementation(() => {});
     try {

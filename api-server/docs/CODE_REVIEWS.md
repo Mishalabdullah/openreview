@@ -48,6 +48,17 @@ means fix the request schema. Updating `API_SECRETS_JSON` in GitHub requires a n
 deployment before the Worker uses the new value. Then retry the failed review
 from the dashboard; non-retryable failures do not resume automatically.
 
+`OPENAI_INCOMPLETE_RESPONSE` means the returned response was not complete or
+did not have the expected structure. The safe `review_openai_incomplete` log
+records the status, reason and output/reasoning token counts, never response text.
+`OPENAI_OUTPUT_LIMIT` identifies a token-limited response; `OPENAI_CONTENT_FILTERED`
+and `OPENAI_REVIEW_REFUSED` identify filtered/refused reviews. None are published
+as completed reviews or automatically retried with the same budget. The default
+`gpt-5-mini` uses low reasoning effort so reasoning leaves room for the review
+within the unchanged 6,000-token output cap. Other model names do not receive
+that model-specific parameter. If output limits persist, inspect the safe token
+counts before choosing a smaller diff or deliberately increasing the budget.
+
 The App ID and downloaded private key are **not** the OAuth client ID/secret.
 PKCS1 RSA and PKCS8 private keys are normalized before signing the GitHub App JWT.
 Background reviews use short-lived **installation access tokens**, not a user's
