@@ -51,7 +51,7 @@ nor `GITHUB_WEBHOOK_URL` is required.
 | ----------- | ------------------------------- | --------------------------- | -------------------------------------------------------- |
 | Local       | `http://localhost:1337`         | `http://localhost:5173`     | `http://localhost:1337/api/auth/callback/github`         |
 | Dev         | `https://api.dev.openreview.si` | `https://dev.openreview.si` | `https://api.dev.openreview.si/api/auth/callback/github` |
-| Production  | `https://api.openreview.si`     | `https://openreview.si`     | `https://api.openreview.si/api/auth/callback/github`     |
+| Production  | `https://api.openreview.si`     | `https://app.openreview.si` | `https://api.openreview.si/api/auth/callback/github`     |
 
 Use separate GitHub Apps/OAuth credentials, auth secrets, webhook secrets,
 databases for all three environments. Separate

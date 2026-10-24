@@ -29,7 +29,7 @@ const configSchema = z
     const expected = {
       local: ["http://localhost:1337", "http://localhost:5173"],
       dev: ["https://api.dev.openreview.si", "https://dev.openreview.si"],
-      production: ["https://api.openreview.si", "https://openreview.si"],
+      production: ["https://api.openreview.si", "https://app.openreview.si"],
     }[env.ENVIRONMENT];
     for (const [index, key] of ["BETTER_AUTH_URL", "FRONTEND_URL"].entries()) {
       if (env[key as "BETTER_AUTH_URL" | "FRONTEND_URL"] !== expected[index]) {

@@ -69,7 +69,7 @@
       "vars": {
         "ENVIRONMENT": "production",
         "BETTER_AUTH_URL": "https://api.openreview.si",
-        "FRONTEND_URL": "https://openreview.si",
+        "FRONTEND_URL": "https://app.openreview.si",
       },
       "queues": {
         "producers": [
