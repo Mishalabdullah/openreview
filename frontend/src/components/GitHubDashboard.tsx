@@ -3,6 +3,7 @@ import type { ApiError } from "../lib/api";
 import type { DashboardData } from "../lib/dashboard-data";
 import type { PullRequest } from "../lib/github-types";
 import { formatTimestamp } from "../lib/format";
+import { ArrowRight, ArrowUpRight } from "lucide-solid";
 import { CodeReview, RepositoryReviewSettings } from "./CodeReviews";
 
 type Actions = {
@@ -306,7 +307,7 @@ export function RepositoryBrowser(props: { model: DashboardData } & Actions) {
                     model.openRepositoryPulls(repo.id);
                   }}
                 >
-                  View pull requests <span aria-hidden="true">→</span>
+                  View pull requests <ArrowRight size={14} aria-hidden="true" />
                 </button>
               </div>
             </article>
@@ -379,9 +380,11 @@ export function PullCards(props: { items: PullRequest[] }) {
                   {(url) => (
                     <a href={url()} target="_blank" rel="noopener noreferrer">
                       {pull.title}{" "}
-                      <span class="external-link-icon" aria-hidden="true">
-                        ↗
-                      </span>
+                      <ArrowUpRight
+                        size={13}
+                        class="external-link-icon inline-icon"
+                        aria-hidden="true"
+                      />
                     </a>
                   )}
                 </Show>

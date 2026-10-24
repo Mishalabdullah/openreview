@@ -19,6 +19,7 @@ import type {
   AgentRule,
   ModelDefinition,
 } from "../lib/agent-config";
+import { Plus, X, ArrowRight } from "lucide-solid";
 
 export default function ModelsPage(props: { userId: string }) {
   const [tab, setTab] = createSignal<"agents" | "models">("agents");
@@ -202,7 +203,7 @@ export default function ModelsPage(props: { userId: string }) {
               disabled={config().rules.length >= 100}
               onClick={addAgent}
             >
-              + Add agent
+              <Plus size={15} aria-hidden="true" /> Add agent
             </button>
           </div>
           <div class="agent-rules">
@@ -264,7 +265,7 @@ export default function ModelsPage(props: { userId: string }) {
                       />
                     </label>
                     <span class="routing-arrow" aria-hidden="true">
-                      →
+                      <ArrowRight size={16} class="inline-icon" />
                     </span>
                     <label>
                       Review model
@@ -291,7 +292,7 @@ export default function ModelsPage(props: { userId: string }) {
                         setNotice("");
                       }}
                     >
-                      ×
+                      <X size={18} aria-hidden="true" />
                     </button>
                   </div>
                 </article>
@@ -350,7 +351,7 @@ export default function ModelsPage(props: { userId: string }) {
             <span class="commit-type-chip">
               {route().type ? `${route().type}:` : "No prefix"}
             </span>
-            <span aria-hidden="true">→</span>
+            <ArrowRight size={16} aria-hidden="true" />
             <div>
               <strong>
                 {route().model
@@ -403,7 +404,7 @@ export default function ModelsPage(props: { userId: string }) {
                 setNotice("");
               }}
             >
-              + Add model
+              <Plus size={15} aria-hidden="true" /> Add model
             </button>
           </div>
           <div class="model-library">

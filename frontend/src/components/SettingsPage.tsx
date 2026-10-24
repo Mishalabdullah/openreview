@@ -1,6 +1,8 @@
 import type { AuthUser } from "../lib/auth-client";
 import type { DashboardData } from "../lib/dashboard-data";
 import { ConnectionPanel } from "./GitHubDashboard";
+import { Check } from "lucide-solid";
+import { Show } from "solid-js";
 
 export default function SettingsPage(props: {
   user: AuthUser;
@@ -73,7 +75,9 @@ export default function SettingsPage(props: {
               <span>
                 Light{" "}
                 <span aria-hidden="true">
-                  {props.theme === "light" ? "✓" : ""}
+                  <Show when={props.theme === "light"}>
+                    <Check size={15} />
+                  </Show>
                 </span>
               </span>
             </button>
@@ -93,7 +97,9 @@ export default function SettingsPage(props: {
               <span>
                 Dark{" "}
                 <span aria-hidden="true">
-                  {props.theme === "dark" ? "✓" : ""}
+                  <Show when={props.theme === "dark"}>
+                    <Check size={15} />
+                  </Show>
                 </span>
               </span>
             </button>
