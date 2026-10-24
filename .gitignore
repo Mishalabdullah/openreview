@@ -1,0 +1,2 @@
+# Root tooling caches (applications keep their own ignore files).
+/node_modules/

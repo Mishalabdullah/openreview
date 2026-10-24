@@ -230,53 +230,22 @@ per-isolate memory rate limits are not a distributed abuse-control mechanism.
 
 ## Hyperdrive and deployment
 
-No infrastructure has been provisioned by this change. In the Cloudflare dashboard,
-create independent Hyperdrive configurations for the dev and production databases
-and **disable query caching**. Cached auth/session/membership reads can make logout
-or permission revocation ineffective. Use TLS with certificate validation for the
-origin connection, where supported by your database provider.
+See [`../docs/DEPLOYMENT.md`](../docs/DEPLOYMENT.md) for the shared frontend/API
+GitHub Actions workflow and required one-time setup. Pushes to `dev` deploy dev;
+`main` deploys production behind GitHub environment protection configured by you.
+PRs run checks only. No remote resources have been provisioned by this setup.
 
-Equivalent Wrangler command templates (run manually with protected credentials;
-connection-string arguments can be visible in process lists):
+Each environment has isolated queue bindings and a recovery cron. Create its
+database, queues and Hyperdrive configuration first, **disable Hyperdrive query
+caching**, and use TLS with certificate validation for the origin connection.
+Set that environment's `HYPERDRIVE_ID` GitHub variable; the deploy script injects
+it into an ignored temporary Wrangler config. Do not deploy placeholder IDs.
 
-```sh
-npx wrangler hyperdrive create openreview-dev --connection-string='<DEV_DIRECT_DATABASE_URL>' --caching-disabled --env dev
-npx wrangler hyperdrive create openreview-production --connection-string='<PRODUCTION_DIRECT_DATABASE_URL>' --caching-disabled --env production
-```
-
-Prefer the dashboard to enter credentials without putting them in shell arguments.
-For existing configurations, `npx wrangler hyperdrive update <ID> --caching-disabled`.
-Take the real IDs returned by Cloudflare and uncomment/configure the corresponding
-`hyperdrive` entries under **each** environment in `wrangler.jsonc`. The commented
-placeholders are not usable bindings. Then regenerate types:
-
-```sh
-npm run cf-typegen
-```
-
-Use interactive secrets commands with distinct values for each target:
-
-```sh
-npx wrangler secret put BETTER_AUTH_SECRET --env dev
-npx wrangler secret put GITHUB_CLIENT_ID --env dev
-npx wrangler secret put GITHUB_CLIENT_SECRET --env dev
-npx wrangler secret put GITHUB_WEBHOOK_SECRET --env dev
-```
-
-Repeat with `--env production` **only during an authorized production rollout**.
-Wrangler secret commands can deploy new Worker versions. Local secret files are
-not uploaded automatically. Confirm Cloudflare account, domain/zone ownership,
-Hyperdrive binding, database target and OAuth app before deploying:
-
-```sh
-npm run typecheck
-npm test
-npm run build
-npx wrangler deploy --dry-run --env dev
-npm run deploy:dev
-# Only after explicit production approval:
-npm run deploy:prod
-```
+The workflow validates secrets, applies committed migrations, then uploads
+backend secrets alongside Worker code. Local `.env`/`.dev.vars` files are never
+uploaded. Manual `npm run deploy:dev` / `npm run deploy:prod` commands require
+the same explicit process configuration and do not apply migrations. Bare
+`npm run deploy` is refused to prevent accidental deployment of local bindings.
 
 `wrangler.jsonc` retains compatibility date `2026-10-23`, explicitly enables
 `nodejs_compat`, and enables logs/traces. Custom domains are configured separately

@@ -6,10 +6,14 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:dev": "VITE_API_URL=https://api.dev.openreview.si npm run build",
+    "build:prod": "VITE_API_URL=https://api.openreview.si npm run build",
+    "deploy:dev": "npm run build:dev && wrangler deploy --env dev",
+    "deploy:prod": "npm run build:prod && wrangler deploy --env production",
     "typecheck": "tsc -b",
     "test": "vitest run",
     "format": "prettier --write .",
-    "format:check": "prettier --check src test vitest.config.ts README.md package.json",
+    "format:check": "prettier --check src test vitest.config.ts wrangler.jsonc README.md package.json",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -25,6 +29,7 @@
     "typescript": "~6.0.3",
     "vite": "^8.3.4",
     "vite-plugin-solid": "^2.11.14",
-    "vitest": "^5.0.5"
+    "vitest": "^5.0.5",
+    "wrangler": "4.152.0"
   }
 }

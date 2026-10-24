@@ -36,25 +36,68 @@
     "dev": {
       "name": "openreview-api-dev",
       "workers_dev": false,
+      "preview_urls": false,
       "routes": [{ "pattern": "api.dev.openreview.si", "custom_domain": true }],
       "vars": {
         "ENVIRONMENT": "dev",
         "BETTER_AUTH_URL": "https://api.dev.openreview.si",
         "FRONTEND_URL": "https://dev.openreview.si",
       },
-      // Required before deployment (disable Hyperdrive query caching for auth):
-      // ,"hyperdrive": [{ "binding": "HYPERDRIVE", "id": "<DEV_HYPERDRIVE_ID>" }]
+      // The deployment script injects the environment's GitHub HYPERDRIVE_ID var.
+      "hyperdrive": [
+        { "binding": "HYPERDRIVE", "id": "__DEV_HYPERDRIVE_ID__" },
+      ],
+      "queues": {
+        "producers": [
+          { "binding": "REVIEW_QUEUE", "queue": "openreview-reviews-dev" },
+        ],
+        "consumers": [
+          {
+            "queue": "openreview-reviews-dev",
+            "max_batch_size": 1,
+            "max_batch_timeout": 1,
+            "max_concurrency": 2,
+            "max_retries": 5,
+            "retry_delay": 60,
+            "dead_letter_queue": "openreview-reviews-dev-dlq",
+          },
+        ],
+      },
+      "triggers": { "crons": ["* * * * *"] },
     },
     "production": {
       "name": "openreview-api-production",
       "workers_dev": false,
+      "preview_urls": false,
       "routes": [{ "pattern": "api.openreview.si", "custom_domain": true }],
       "vars": {
         "ENVIRONMENT": "production",
         "BETTER_AUTH_URL": "https://api.openreview.si",
         "FRONTEND_URL": "https://openreview.si",
       },
-      // ,"hyperdrive": [{ "binding": "HYPERDRIVE", "id": "<PRODUCTION_HYPERDRIVE_ID>" }]
+      "hyperdrive": [
+        { "binding": "HYPERDRIVE", "id": "__PRODUCTION_HYPERDRIVE_ID__" },
+      ],
+      "queues": {
+        "producers": [
+          {
+            "binding": "REVIEW_QUEUE",
+            "queue": "openreview-reviews-production",
+          },
+        ],
+        "consumers": [
+          {
+            "queue": "openreview-reviews-production",
+            "max_batch_size": 1,
+            "max_batch_timeout": 1,
+            "max_concurrency": 2,
+            "max_retries": 5,
+            "retry_delay": 60,
+            "dead_letter_queue": "openreview-reviews-production-dlq",
+          },
+        ],
+      },
+      "triggers": { "crons": ["* * * * *"] },
     },
   },
 }

@@ -76,11 +76,12 @@ batch size of one, concurrency capped at two, five queue retries and a dead-lett
 queue. `npm run dev` runs the HTTP API and queue consumer together. No external
 queue resource is needed for this local simulation.
 
-Production/dev environment bindings are deliberately **not** provisioned by this
-change. Before deploying reviews, explicitly create/select environment-specific
-queues and add producers/consumers with binding name `REVIEW_QUEUE` to each
-environment. Configure a once-per-minute Cron Trigger for recovery dispatch.
-Do not accidentally deploy the local queue names as production resources.
+Hosted dev/production configuration and CI/CD are in
+[`../../docs/DEPLOYMENT.md`](../../docs/DEPLOYMENT.md). Each named environment
+has separate queue bindings and a once-per-minute recovery cron. The underlying
+queues, databases, Hyperdrive configurations and credentials must still be
+created/configured before the first deployment. Do not deploy the local queue
+names as production resources.
 
 The scheduled handler recovers saved-but-unsent jobs and expired leases; queue
 delivery alone is not treated as the source of truth. Local dev does not

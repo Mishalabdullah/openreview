@@ -5,7 +5,10 @@ import type { GitHubService } from "../lib/github/service";
 import type { ReviewQueue } from "../lib/reviews/jobs";
 
 // Public vars come from `wrangler types`; secrets are supplied at runtime.
-export type Bindings = Omit<CloudflareBindings, "REVIEW_QUEUE"> & {
+export type Bindings = Omit<
+  CloudflareBindings,
+  "REVIEW_QUEUE" | "HYPERDRIVE"
+> & {
   BETTER_AUTH_SECRET: string;
   GITHUB_CLIENT_ID: string;
   GITHUB_CLIENT_SECRET: string;

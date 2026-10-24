@@ -1,5 +1,12 @@
 ## Usage
 
+### Cloudflare deployments
+
+The `dev` branch deploys to `dev.openreview.si`; `main` deploys to `openreview.si`.
+Both use Workers Static Assets with SPA routing. See
+[`../docs/DEPLOYMENT.md`](../docs/DEPLOYMENT.md) for required setup, GitHub
+environment secrets, production approvals, and the shared CI/CD workflow.
+
 ### Authentication setup
 
 The existing UI uses the Better Auth SolidJS client with cookie-based sessions.
