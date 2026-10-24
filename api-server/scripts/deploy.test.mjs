@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { generateKeyPairSync } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { deploymentConfig, deploymentSecrets } from "./deploy.mjs";
-const parse = JSON.parse;
+import { parse } from "jsonc-parser";
 
 const source = readFileSync(
   new URL("../wrangler.jsonc", import.meta.url),
