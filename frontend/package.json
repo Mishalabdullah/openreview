@@ -1,0 +1,35 @@
+{
+  "name": "frontend",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "build:dev": "VITE_API_URL=https://api.dev.openreview.si npm run build",
+    "build:prod": "VITE_API_URL=https://api.openreview.si npm run build",
+    "deploy:dev": "npm run build:dev && wrangler deploy --env dev",
+    "deploy:prod": "npm run build:prod && wrangler deploy --env production",
+    "typecheck": "tsc -b",
+    "test": "vitest run",
+    "format": "prettier --write .",
+    "format:check": "prettier --check src test vitest.config.ts wrangler.jsonc README.md package.json",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@fontsource-variable/manrope": "^5.3.0",
+    "@fontsource-variable/newsreader": "^5.3.0",
+    "@fontsource/ibm-plex-mono": "^5.3.0",
+    "better-auth": "^1.7.12",
+    "solid-js": "^1.9.17"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "prettier": "^3.9.10",
+    "typescript": "~6.0.3",
+    "vite": "^8.3.4",
+    "vite-plugin-solid": "^2.11.14",
+    "vitest": "^5.0.5",
+    "wrangler": "4.152.0"
+  }
+}

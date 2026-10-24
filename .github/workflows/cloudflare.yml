@@ -1,0 +1,138 @@
+name: Cloudflare CI/CD
+
+on:
+  pull_request:
+    branches: [dev, main]
+  push:
+    branches: [dev, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Check ${{ matrix.app }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [api-server, frontend]
+    defaults:
+      run:
+        working-directory: ${{ matrix.app }}
+    env:
+      CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV: "false"
+      WRANGLER_SEND_METRICS: "false"
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: ${{ matrix.app }}/package-lock.json
+      - run: npm ci
+      - run: npm run format:check
+      - run: npm test
+      - run: npm run typecheck
+      - run: npm run build
+
+  deploy:
+    name: Deploy ${{ github.ref_name == 'main' && 'production' || 'dev' }}
+    needs: checks
+    if: >-
+      github.event_name != 'pull_request' &&
+      (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Configure required reviewers and branch restrictions in GitHub settings.
+    environment:
+      name: ${{ github.ref_name == 'main' && 'production' || 'dev' }}
+      url: ${{ github.ref_name == 'main' && 'https://openreview.si' || 'https://dev.openreview.si' }}
+    concurrency:
+      group: cloudflare-deploy-${{ github.ref_name }}
+      # Never abort a running migration or deployment for a newer push.
+      cancel-in-progress: false
+    env:
+      DEPLOY_ENV: ${{ github.ref_name == 'main' && 'production' || 'dev' }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID || secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV: "false"
+      WRANGLER_SEND_METRICS: "false"
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Refuse stale branch deployments
+        run: |
+          git fetch --no-tags origin "$GITHUB_REF_NAME"
+          if [ "$(git rev-parse HEAD)" != "$(git rev-parse FETCH_HEAD)" ]; then
+            echo "This commit is no longer the branch head. Deploy the latest commit instead."
+            exit 1
+          fi
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: |
+            api-server/package-lock.json
+            frontend/package-lock.json
+      - run: npm ci
+        working-directory: api-server
+      - run: npm ci
+        working-directory: frontend
+      - name: Validate deployment configuration
+        working-directory: api-server
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          API_SECRETS_JSON: ${{ secrets.API_SECRETS_JSON }}
+          GITHUB_APP_PRIVATE_KEY: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: node scripts/deploy.mjs "$DEPLOY_ENV" --check
+      - name: Build frontend for the selected API
+        working-directory: frontend
+        run: |
+          if [ "$DEPLOY_ENV" = production ]; then
+            npm run build:prod
+          else
+            npm run build:dev
+          fi
+      - name: Apply database migrations
+        working-directory: api-server
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          node --input-type=module -e '
+            try {
+              const url = new URL(process.env.DATABASE_URL);
+              if (!["postgres:", "postgresql:"].includes(url.protocol)) throw new Error();
+            } catch { console.error("Set DATABASE_URL for this GitHub environment."); process.exit(1); }
+          '
+          npm run db:migrate
+      - name: Deploy API and review consumer
+        working-directory: api-server
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          API_SECRETS_JSON: ${{ secrets.API_SECRETS_JSON }}
+          GITHUB_APP_PRIVATE_KEY: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: node scripts/deploy.mjs "$DEPLOY_ENV"
+      - name: Check API health
+        run: |
+          if [ "$DEPLOY_ENV" = production ]; then
+            API_URL=https://api.openreview.si
+          else
+            API_URL=https://api.dev.openreview.si
+          fi
+          curl --fail --silent --show-error --retry 5 --retry-all-errors --retry-delay 10 "$API_URL/health"
+      - name: Deploy frontend static assets
+        working-directory: frontend
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: npx --no-install wrangler deploy --env "$DEPLOY_ENV"
+      - name: Check frontend SPA routing
+        run: |
+          if [ "$DEPLOY_ENV" = production ]; then
+            APP_URL=https://openreview.si
+          else
+            APP_URL=https://dev.openreview.si
+          fi
+          curl --fail --silent --show-error --retry 5 --retry-all-errors --retry-delay 10 "$APP_URL/dashboard" --output /dev/null

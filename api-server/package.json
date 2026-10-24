@@ -1,0 +1,43 @@
+{
+  "name": "api-server",
+  "type": "module",
+  "scripts": {
+    "format": "prettier --write . --cache-location .wrangler/prettier/cache.json",
+    "format:check": "prettier --check . --cache-location .wrangler/prettier/cache.json",
+    "dev": "wrangler dev --port 1337 --test-scheduled",
+    "deploy": "node scripts/deploy.mjs",
+    "deploy:dev": "node scripts/deploy.mjs dev",
+    "deploy:prod": "node scripts/deploy.mjs production",
+    "build": "wrangler deploy --dry-run --env=\"\" --outdir dist",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run test:deploy && npm run test:integration && npm run test:workers",
+    "test:deploy": "node --test scripts/deploy.test.mjs",
+    "test:integration": "vitest run",
+    "test:workers": "CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV=false vitest run --config vitest.workers.config.ts",
+    "auth:generate": "auth generate --config auth-schema.config.ts --adapter drizzle --dialect postgresql --output src/db/auth-schema.ts --yes",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "cf-typegen": "CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV=false wrangler types --env-interface CloudflareBindings"
+  },
+  "dependencies": {
+    "better-auth": "^1.7.12",
+    "drizzle-orm": "^0.45.4",
+    "hono": "^4.13.13",
+    "jose": "^6.2.13",
+    "pg": "^8.23.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "^1.4.7",
+    "@electric-sql/pglite": "^0.5.11",
+    "@types/pg": "^8.23.1",
+    "auth": "^1.7.12",
+    "dotenv": "^18.0.9",
+    "drizzle-kit": "^0.31.11",
+    "jsonc-parser": "3.3.1",
+    "prettier": "4.0.0-alpha.13",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5",
+    "wrangler": "^4.110.0"
+  }
+}

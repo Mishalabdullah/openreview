@@ -38,6 +38,13 @@ Each application or package should keep its own setup and implementation documen
 
 ## Getting started
 
+### Dashboard and API deployments
+
+The dashboard (`frontend/`) and API (`api-server/`) have a shared Cloudflare CI/CD
+workflow: `dev` deploys hosted dev and `main` deploys production. Required resource,
+secret, and production approval setup is in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+The landing page is not included in that deployment workflow.
+
 ### Requirements
 
 - Node.js **22.22.0 or newer**

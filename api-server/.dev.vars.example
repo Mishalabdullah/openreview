@@ -1,0 +1,15 @@
+BETTER_AUTH_URL=http://localhost:1337
+FRONTEND_URL=http://localhost:5173
+BETTER_AUTH_SECRET=replace-with-a-random-secret-at-least-32-characters
+GITHUB_CLIENT_ID=replace-with-local-github-app-client-id
+GITHUB_CLIENT_SECRET=replace-with-local-github-app-client-secret
+GITHUB_APP_SLUG=your-github-app-slug
+GITHUB_WEBHOOK_SECRET=replace-with-a-separate-random-webhook-secret
+DATABASE_URL=postgresql://openreview:password@localhost:5432/openreview_local
+# Apply the review migration and approve app permissions before enabling a repository.
+GITHUB_APP_ID=123456
+GITHUB_APP_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\nreplace-with-your-app-private-key\n-----END RSA PRIVATE KEY-----"
+OPENAI_API_KEY=replace-with-your-openai-api-key
+OPENAI_REVIEW_MODEL=gpt-5-mini
+# Configure this full URL in GitHub; the backend does not auto-register webhooks.
+GITHUB_WEBHOOK_ENDPOINT=https://your-tunnel.example/api/v1/webhooks/github
