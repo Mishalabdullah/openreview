@@ -12,6 +12,22 @@ import { formatCount, formatTimestamp } from "./lib/format";
 import ModelsPage from "./components/ModelsPage";
 import SettingsPage from "./components/SettingsPage";
 import ReviewRulesPage from "./components/ReviewRulesPage";
+import {
+  LayoutDashboard,
+  FolderGit2,
+  GitPullRequest,
+  ListChecks,
+  Bot,
+  Settings2,
+  PanelLeftClose,
+  PanelLeftOpen,
+  LogOut,
+  Menu,
+  X,
+  Sun,
+  Moon,
+  ArrowRight,
+} from "lucide-solid";
 
 type DashboardProps = {
   user: AuthUser;
@@ -26,12 +42,12 @@ type DashboardProps = {
 };
 
 const navigation = [
-  { label: "Overview", icon: "⊞", view: "overview" },
-  { label: "Repositories", icon: "▤", view: "repositories" },
-  { label: "Pull Requests", icon: "⑂", view: "pull-requests" },
-  { label: "Review Rules", icon: "☷", view: "review-rules" },
-  { label: "Models & Agents", icon: "⬡", view: "models" },
-  { label: "Settings", icon: "⚙", view: "settings" },
+  { label: "Overview", icon: LayoutDashboard, view: "overview" },
+  { label: "Repositories", icon: FolderGit2, view: "repositories" },
+  { label: "Pull Requests", icon: GitPullRequest, view: "pull-requests" },
+  { label: "Review Rules", icon: ListChecks, view: "review-rules" },
+  { label: "Models & Agents", icon: Bot, view: "models" },
+  { label: "Settings", icon: Settings2, view: "settings" },
 ] as const;
 
 export default function Dashboard(props: DashboardProps) {
@@ -89,13 +105,19 @@ export default function Dashboard(props: DashboardProps) {
       onClick={props.onToggleTheme}
       aria-label={`Switch to ${props.theme === "dark" ? "light" : "dark"} theme`}
     >
-      <span aria-hidden="true">◐</span> {props.theme}
+      <Show
+        when={props.theme === "dark"}
+        fallback={<Sun size={16} aria-hidden="true" />}
+      >
+        <Moon size={16} aria-hidden="true" />
+      </Show>{" "}
+      {props.theme}
     </button>
   );
 
   const AccountControl = () => (
     <div class="sidebar-account">
-      <span class="dashboard-avatar" aria-hidden="true">
+      <span class="dashboard-avatar" title={props.user.name} aria-hidden="true">
         {initials()}
       </span>
       <div class="sidebar-label">
@@ -110,80 +132,93 @@ export default function Dashboard(props: DashboardProps) {
         disabled={props.signingOut}
         onClick={() => void props.onSignOut()}
       >
-        <svg
-          width="18"
-          height="18"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.7"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
-        >
-          <path d="M9 4H4v16h5m5-13 5 5-5 5M8 12h11" />
-        </svg>
+        <LogOut size={18} strokeWidth={1.75} aria-hidden="true" />
       </button>
     </div>
   );
 
   const SidebarContent = () => (
     <>
-      <a
-        href="/dashboard"
-        class="dashboard-brand"
-        aria-label="OpenReview overview"
-      >
-        <svg
-          width="24"
-          height="24"
-          viewBox="0 0 80 80"
-          fill="currentColor"
-          aria-hidden="true"
+      <div class="sidebar-header">
+        <a
+          href="/dashboard"
+          class="dashboard-brand"
+          aria-label="OpenReview overview"
         >
-          <path d="M8 29C8 17 17 9 29 9H51V21H29C23 21 20 24 20 30V50C20 56 23 59 29 59H38V31H54C66 31 73 38 73 49V53H61V49C61 45 58 43 54 43H50V71H29C17 71 8 63 8 51Z" />
-          <path d="M55 9H73V27H61V21H55ZM57 59H73V71H57Z" />
-        </svg>
-        <span class="sidebar-label">openreview</span>
-      </a>
-
-      <nav class="dashboard-nav" aria-label="Main navigation">
-        <For each={navigation}>
-          {(item) => (
-            <button
-              type="button"
-              classList={{
-                "nav-item": true,
-                "is-active": model.view() === item.view,
-              }}
-              aria-current={model.view() === item.view ? "page" : undefined}
-              aria-label={item.label}
-              title={item.label}
-              onClick={() => {
-                model.navigate(item.view);
-                mobileMenu.close();
-              }}
-            >
-              <span class="nav-icon" aria-hidden="true">
-                {item.icon}
-              </span>
-              <span class="sidebar-label">{item.label}</span>
-            </button>
-          )}
-        </For>
-      </nav>
-
-      <div class="sidebar-bottom">
+          <svg
+            width="24"
+            height="24"
+            viewBox="0 0 80 80"
+            fill="currentColor"
+            aria-hidden="true"
+          >
+            <path d="M8 29C8 17 17 9 29 9H51V21H29C23 21 20 24 20 30V50C20 56 23 59 29 59H38V31H54C66 31 73 38 73 49V53H61V49C61 45 58 43 54 43H50V71H29C17 71 8 63 8 51Z" />
+            <path d="M55 9H73V27H61V21H55ZM57 59H73V71H57Z" />
+          </svg>
+          <span class="sidebar-label">openreview</span>
+        </a>
         <button
           type="button"
           class="sidebar-collapse"
           aria-label={collapsed() ? "Expand sidebar" : "Collapse sidebar"}
           aria-expanded={!collapsed()}
+          aria-controls="dashboard-sidebar"
+          title={collapsed() ? "Expand sidebar" : "Collapse sidebar"}
           onClick={() => setCollapsed(!collapsed())}
         >
-          <span aria-hidden="true">{collapsed() ? "›" : "‹"}</span>
-          <span class="sidebar-label">Collapse sidebar</span>
+          <Show
+            when={collapsed()}
+            fallback={
+              <PanelLeftClose size={20} strokeWidth={1.75} aria-hidden="true" />
+            }
+          >
+            <PanelLeftOpen size={20} strokeWidth={1.75} aria-hidden="true" />
+          </Show>
         </button>
+      </div>
+
+      <nav class="dashboard-nav" aria-label="Main navigation">
+        <For
+          each={[
+            { label: "Workspace", items: navigation.slice(0, 3) },
+            { label: "Review tools", items: navigation.slice(3, 5) },
+            { label: "Preferences", items: navigation.slice(5) },
+          ]}
+        >
+          {(group) => (
+            <div class="sidebar-nav-group">
+              <p class="sidebar-group-label sidebar-label">{group.label}</p>
+              <For each={group.items}>
+                {(item) => (
+                  <button
+                    type="button"
+                    classList={{
+                      "nav-item": true,
+                      "is-active": model.view() === item.view,
+                    }}
+                    aria-current={
+                      model.view() === item.view ? "page" : undefined
+                    }
+                    aria-label={item.label}
+                    title={item.label}
+                    onClick={() => {
+                      model.navigate(item.view);
+                      mobileMenu.close();
+                    }}
+                  >
+                    <span class="nav-icon" aria-hidden="true">
+                      <item.icon size={20} strokeWidth={1.75} />
+                    </span>
+                    <span class="sidebar-label">{item.label}</span>
+                  </button>
+                )}
+              </For>
+            </div>
+          )}
+        </For>
+      </nav>
+
+      <div class="sidebar-bottom">
         <AccountControl />
       </div>
     </>
@@ -194,7 +229,11 @@ export default function Dashboard(props: DashboardProps) {
       <a class="dashboard-skip" href="#dashboard-main">
         Skip to content
       </a>
-      <aside class="dashboard-sidebar" aria-label="Workspace sidebar">
+      <aside
+        id="dashboard-sidebar"
+        class="dashboard-sidebar"
+        aria-label="Workspace sidebar"
+      >
         <SidebarContent />
       </aside>
 
@@ -213,7 +252,7 @@ export default function Dashboard(props: DashboardProps) {
             aria-label="Close navigation"
             onClick={() => mobileMenu.close()}
           >
-            ×
+            <X size={20} aria-hidden="true" />
           </button>
           <SidebarContent />
           <ThemeControl />
@@ -229,17 +268,7 @@ export default function Dashboard(props: DashboardProps) {
             aria-haspopup="dialog"
             onClick={() => mobileMenu.showModal()}
           >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              aria-hidden="true"
-            >
-              <path d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
+            <Menu size={20} aria-hidden="true" />
           </button>
           <p class="dashboard-breadcrumb">OpenReview / {title()}</p>
           <p class="mobile-page-title">{title()}</p>
@@ -426,7 +455,7 @@ export default function Dashboard(props: DashboardProps) {
                       class="dashboard-control"
                       onClick={() => model.navigate("pull-requests")}
                     >
-                      View all <span aria-hidden="true">→</span>
+                      View all <ArrowRight size={14} aria-hidden="true" />
                     </button>
                   </div>
                   <Show when={model.overview.loading()}>

@@ -1,4 +1,13 @@
 import { createSignal, For, onCleanup } from "solid-js";
+import {
+  ShieldCheck,
+  Folder,
+  CodeXml,
+  FileText,
+  Copy,
+  ArrowDownRight,
+  Sparkles,
+} from "lucide-solid";
 
 const examples = [
   {
@@ -15,36 +24,15 @@ const examples = [
   },
 ];
 
+const ruleIcons: Record<string, typeof ShieldCheck> = {
+  shield: ShieldCheck,
+  folder: Folder,
+  code: CodeXml,
+};
+
 function RuleIcon(props: { kind: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="1.5"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-      aria-hidden="true"
-    >
-      {props.kind === "shield" ? (
-        <>
-          <path d="M12 3 4 6v6c0 5 8 9 8 9s8-4 8-9V6l-8-3Z" />
-          <path d="m8.5 12 2.5 2.5 4.5-5" />
-        </>
-      ) : props.kind === "folder" ? (
-        <path d="M3 7V5a1 1 0 0 1 1-1h5l2 3h9a1 1 0 0 1 1 1v11H3V7Z" />
-      ) : props.kind === "code" ? (
-        <>
-          <path d="m8 7-5 5 5 5m8-10 5 5-5 5m-3-12-2 24" />
-        </>
-      ) : (
-        <>
-          <path d="M6 3h8l4 4v14H6V3Z" />
-          <path d="M13 3v5h5M9 12h6m-6 4h4" />
-        </>
-      )}
-    </svg>
-  );
+  const Icon = ruleIcons[props.kind] ?? FileText;
+  return <Icon strokeWidth={1.75} aria-hidden="true" />;
 }
 
 /** Original vector artwork, shared by light/dark themes without external image requests. */
@@ -238,8 +226,8 @@ export default function ReviewRulesPage() {
       <section class="rules-hero" aria-labelledby="rules-hero-heading">
         <div class="rules-hero-copy">
           <span class="rules-kicker">
-            <span aria-hidden="true">✦</span> A playbook, not another settings
-            form
+            <Sparkles size={13} aria-hidden="true" /> A playbook, not another
+            settings form
           </span>
           <h2 id="rules-hero-heading">
             Great reviews start
@@ -252,7 +240,7 @@ export default function ReviewRulesPage() {
             describe your custom rules in Markdown files.
           </p>
           <a class="button" href="#rules-setup">
-            Build your playbook <span aria-hidden="true">↘</span>
+            Build your playbook <ArrowDownRight size={16} aria-hidden="true" />
           </a>
           <span class="rules-hero-caption">
             Plain Markdown. Versioned with your project.
@@ -381,7 +369,7 @@ export default function ReviewRulesPage() {
                     aria-label={`Copy ${example.file} example`}
                     onClick={() => void copy(example.text, example.file)}
                   >
-                    Copy <span aria-hidden="true">⧉</span>
+                    Copy <Copy size={13} aria-hidden="true" />
                   </button>
                 </div>
                 <pre
