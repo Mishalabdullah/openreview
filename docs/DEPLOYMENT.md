@@ -74,13 +74,13 @@ In **Settings → Environments**, create `dev` and `production`.
 
 Set the following **in each GitHub environment**, not as shared repository values:
 
-| Type     | Name                    | Value                                                                              |
-| -------- | ----------------------- | ---------------------------------------------------------------------------------- |
-| Variable | `CLOUDFLARE_ACCOUNT_ID` | Target Cloudflare account ID                                                       |
-| Secret   | `CLOUDFLARE_API_TOKEN`  | Scoped deployment token                                                            |
-| Secret   | `DATABASE_URL`          | Public Railway PostgreSQL URL for this environment, used by runtime and migrations |
-| Secret   | `API_SECRETS_JSON`      | JSON object shown below, with real backend values                                  |
-| Secret   | `GH_APP_PRIVATE_KEY`    | Full RSA PEM private key, with real line breaks (no quotes or JSON escaping)       |
+| Type               | Name                    | Value                                                                               |
+| ------------------ | ----------------------- | ----------------------------------------------------------------------------------- |
+| Variable or secret | `CLOUDFLARE_ACCOUNT_ID` | Target Cloudflare account ID; a non-empty variable takes precedence over the secret |
+| Secret             | `CLOUDFLARE_API_TOKEN`  | Scoped deployment token                                                             |
+| Secret             | `DATABASE_URL`          | Public Railway PostgreSQL URL for this environment, used by runtime and migrations  |
+| Secret             | `API_SECRETS_JSON`      | JSON object shown below, with real backend values                                   |
+| Secret             | `GH_APP_PRIVATE_KEY`    | Full RSA PEM private key, with real line breaks (no quotes or JSON escaping)        |
 
 ```json
 {

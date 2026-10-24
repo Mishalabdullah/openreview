@@ -56,7 +56,7 @@ jobs:
       cancel-in-progress: false
     env:
       DEPLOY_ENV: ${{ github.ref_name == 'main' && 'production' || 'dev' }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID || secrets.CLOUDFLARE_ACCOUNT_ID }}
       CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV: "false"
       WRANGLER_SEND_METRICS: "false"
     steps:
