@@ -2,7 +2,9 @@
 
 ### Cloudflare deployments
 
-The `dev` branch deploys to `dev.openreview.si`; `main` deploys to `openreview.si`.
+The `dev` branch deploys to `dev.openreview.si`; `main` deploys to `app.openreview.si`.
+The production dashboard is `https://app.openreview.si/dashboard`;
+`https://openreview.si` remains the separate landing page.
 Both use Workers Static Assets with SPA routing. See
 [`../docs/DEPLOYMENT.md`](../docs/DEPLOYMENT.md) for required setup, GitHub
 environment secrets, production approvals, and the shared CI/CD workflow.

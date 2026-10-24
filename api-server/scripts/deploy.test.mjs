@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { generateKeyPairSync } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { deploymentConfig, deploymentSecrets } from "./deploy.mjs";
+import { parse } from "jsonc-parser";
 
 const source = readFileSync(
   new URL("../wrangler.jsonc", import.meta.url),
@@ -14,6 +15,12 @@ for (const environment of ["dev", "production"]) {
     assert.deepEqual(Object.keys(config.env), [environment]);
     const env = config.env[environment];
     assert.equal(env.vars.ENVIRONMENT, environment);
+    assert.equal(
+      env.vars.FRONTEND_URL,
+      environment === "production"
+        ? "https://app.openreview.si"
+        : "https://dev.openreview.si",
+    );
     assert.equal(env.hyperdrive, undefined);
     assert.equal(
       env.queues.producers[0].queue,
@@ -26,6 +33,20 @@ for (const environment of ["dev", "production"]) {
     assert.deepEqual(env.triggers.crons, ["* * * * *"]);
   });
 }
+test("production frontend uses the app subdomain, never the landing page apex", () => {
+  const config = parse(
+    readFileSync(
+      new URL("../../frontend/wrangler.jsonc", import.meta.url),
+      "utf8",
+    ),
+  );
+  assert.deepEqual(config.env.production.routes, [
+    { pattern: "app.openreview.si", custom_domain: true },
+  ]);
+  assert.deepEqual(config.env.dev.routes, [
+    { pattern: "dev.openreview.si", custom_domain: true },
+  ]);
+});
 test("rejects implicit environments", () => {
   for (const environment of [undefined, "local", "prod", "main"])
     assert.throws(() => deploymentConfig(source, environment));

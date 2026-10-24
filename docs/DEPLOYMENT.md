@@ -9,13 +9,14 @@ The landing-page application is not deployed by this workflow.
 | Git branch | GitHub environment | Frontend                    | API                             |
 | ---------- | ------------------ | --------------------------- | ------------------------------- |
 | `dev`      | `dev`              | `https://dev.openreview.si` | `https://api.dev.openreview.si` |
-| `main`     | `production`       | `https://openreview.si`     | `https://api.openreview.si`     |
+| `main`     | `production`       | `https://app.openreview.si` | `https://api.openreview.si`     |
 
-Production's apex domain serves the dashboard app. If the landing page already
-uses `openreview.si`, decide where it will live before connecting this domain.
-Moving the dashboard to another hostname requires updating both Wrangler configs,
-`src/config/env.ts` in the API, frontend build scripts, workflow URLs, and GitHub
-App URLs together.
+The production app uses `app.openreview.si`, with its dashboard at
+`https://app.openreview.si/dashboard`. The apex `https://openreview.si` remains
+the landing page and is not attached to the frontend Worker by this workflow.
+The production API stays at `api.openreview.si`. Auth redirects and CORS trust
+the app subdomain, not the landing page; cookies remain host-only on the API.
+No domain-wide cookies are needed because the app and API share the same site.
 
 ## One-time setup (required before the first deployment)
 
@@ -27,6 +28,9 @@ Start with dev. Do not point dev at the production database or GitHub App.
 1. Add `openreview.si` to the intended Cloudflare account and configure DNS.
    Resolve any existing Worker routes/DNS records that conflict with the four
    custom domains above. Wrangler attaches custom domains at deployment.
+   Do not replace the landing page's apex DNS/hosting configuration. If an older
+   frontend deployment already attached the apex to its Worker, review/remove
+   that old association separately before restoring landing-page hosting.
 2. Use a Workers plan suitable for Queues and this workload; Workers
    Paid is the recommended production baseline. Review current usage pricing.
 3. Create separate dev and production PostgreSQL databases (or isolated branches
@@ -128,6 +132,9 @@ Follow [GitHub setup](../api-server/docs/GITHUB_API.md) and
 [review setup](../api-server/docs/CODE_REVIEWS.md) for the installation Setup URL,
 permissions, and subscribed events. Install the dev app on test repositories only.
 No ngrok tunnel is needed for hosted dev or production.
+For the production GitHub App, set any app homepage/dashboard links to
+`https://app.openreview.si` or `https://app.openreview.si/dashboard`. OAuth and
+installation callbacks remain on the API domain; do not change them to the app.
 
 ## Release flow
 

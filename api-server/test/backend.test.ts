@@ -107,7 +107,10 @@ describe("infrastructure and configuration", () => {
       "Invalid backend",
     );
     expect(() =>
-      readConfig({ ...env, FRONTEND_URL: "https://openreview.si" }),
+      readConfig({
+        ...env,
+        FRONTEND_URL: "https://openreview.si" as Bindings["FRONTEND_URL"],
+      }),
     ).toThrow();
     expect(() =>
       readConfig({
@@ -249,11 +252,12 @@ describe("authentication", () => {
         ...env,
         ENVIRONMENT: "production" as const,
         BETTER_AUTH_URL: "https://api.openreview.si" as const,
-        FRONTEND_URL: "https://openreview.si" as const,
+        FRONTEND_URL: "https://app.openreview.si" as const,
       },
     ]) {
       const options = authOptions(readConfig(config));
       expect(options.baseURL).toBe(config.BETTER_AUTH_URL);
+      expect(options.trustedOrigins).toEqual([config.FRONTEND_URL]);
       expect(options.advanced.useSecureCookies).toBe(true);
       expect(options.advanced.defaultCookieAttributes).toEqual({
         httpOnly: true,
@@ -261,6 +265,39 @@ describe("authentication", () => {
       });
       expect(options.advanced.crossSubDomainCookies.enabled).toBe(false);
     }
+  });
+
+  it("allows production app preflights but rejects the landing page origin", async () => {
+    const production = {
+      ...env,
+      ENVIRONMENT: "production" as const,
+      BETTER_AUTH_URL: "https://api.openreview.si" as const,
+      FRONTEND_URL: "https://app.openreview.si" as const,
+    };
+    expect(() =>
+      readConfig({
+        ...production,
+        FRONTEND_URL: "https://openreview.si" as Bindings["FRONTEND_URL"],
+      }),
+    ).toThrow("Invalid backend");
+    const preflight = (origin: string) =>
+      app.request(
+        "https://api.openreview.si/api/v1/me",
+        {
+          method: "OPTIONS",
+          headers: { Origin: origin, "Access-Control-Request-Method": "GET" },
+        },
+        production,
+      );
+    const allowed = await preflight("https://app.openreview.si");
+    expect(allowed.status).toBe(204);
+    expect(allowed.headers.get("Access-Control-Allow-Origin")).toBe(
+      "https://app.openreview.si",
+    );
+    expect(allowed.headers.get("Access-Control-Allow-Credentials")).toBe(
+      "true",
+    );
+    expect((await preflight("https://openreview.si")).status).toBe(403);
   });
 
   it("rejects expired sessions", async () => {
